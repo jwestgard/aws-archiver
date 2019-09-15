@@ -1,10 +1,11 @@
-def Batch():
+class Batch():
 
     '''Class representing a set of resources to be archived'''
 
     def __init__(self, mapfile):
         self.mapfile = mapfile
         with open(mapfile) as handle:
-            self.items = []
+            self.contents = []
             for row in handle:
-                print(row)
+                md5, path = row.strip().split(' ', 1)
+                self.contents.append((path, md5))
