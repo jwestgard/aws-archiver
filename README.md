@@ -2,7 +2,7 @@
 Command-line preservation archiving tool for S3
 
 ## Purpose
-The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3 storage while ensuring end-to-end asset fixity and the creation of a auditable deposit records.
+The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3 storage while ensuring end-to-end asset fixity and the creation of auditable deposit records.
 
 ## Installation
 To install the tool for system-wide access, the recommended method is via pip:
