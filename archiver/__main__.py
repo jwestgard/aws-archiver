@@ -20,11 +20,13 @@ def main():
                         metavar='{dep}',
                         dest='cmd'
     )
+    
     parser.add_argument('-v', '--version',
                         action='version',
                         help='Print version number and exit',
                         version=version
     )
+    
     subparsers.required = True
 
     # argument parsers for various sub-commands
@@ -33,11 +35,21 @@ def main():
                         help='Deposit resources to S3',
                         description='Deposit a batch of resources to S3'
     )
+    
+    # facility for loading a list of files
     deposit_parser.add_argument(
                         '-m', '--mapfile',
                         action='store',
-                        help='Path to list of resources to archive'
+                        help='Archive assets in inventory file'
     )
+    
+    # facility for loading a single file
+    deposit_parser.add_argument(
+                        '-a', '--asset',
+                        action='store',
+                        help='Archive a single asset'
+    )
+    
     deposit_parser.set_defaults(func=deposit)
 
     # parse the args and call the default sub-command function

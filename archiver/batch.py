@@ -1,24 +1,30 @@
 import os
+from .asset import Asset
+
 
 class Batch():
 
     '''Class representing a set of resources to be archived'''
 
-    def __init__(self, mapfile):
-        self.mapfile = mapfile
-        self.skips, self.contents = self.read_mapfile()
+    def __init__(self, args):
+        print(args)
+        if args.mapfile:
+            self.mapfile = args.mapfile
+            self.contents = self.from_mapfile()
+        elif args.asset:
+            self.contents = [Asset(path=args.asset)]
 
-    def read_mapfile(self):
+
+    def from_mapfile(self):
+
+        '''Read assets from md5sum-style inventory file'''
+
         assets = []
-        skips = []
-        with open(self.mapfile) as handle:
+        with open(mapfile) as handle:
             lines = [line.strip() for line in handle]
+
         for line in lines:
             md5, path = line.split(None, 1)
-            if os.path.basename(path).startswith('.'):
-                skips.append(path)
-            elif not os.path.exists(path):
-                skips.append(path)
-            else:
-                assets.append((path, md5))
-        return skips, assets
+            assets.append(Asset(path, md5))
+
+        return assets

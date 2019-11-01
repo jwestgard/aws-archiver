@@ -1,4 +1,6 @@
+import hashlib
 import os
+
 
 class Asset():
 
@@ -13,7 +15,9 @@ class Asset():
         self.bytes     = os.path.getsize(path)
         self.extension = os.path.splitext(path)[1].lstrip('.').upper()
 
+
     def generate_md5(self):
+        hash = hashlib.md5()
         with open(self.path, 'rb') as f:
             while True:
                 data = f.read(8192)
