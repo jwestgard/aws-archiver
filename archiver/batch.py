@@ -7,6 +7,9 @@ class Batch():
     '''Class representing a set of resources to be archived'''
 
     def __init__(self, args):
+
+        '''Set up a batch of assets to be loaded based on supplied args'''
+
         print(args)
         if args.mapfile:
             self.mapfile = args.mapfile

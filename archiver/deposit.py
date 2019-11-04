@@ -1,5 +1,4 @@
 import boto3
-import hashlib
 from .batch import Batch
 from .asset import Asset
 
