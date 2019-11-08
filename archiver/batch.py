@@ -24,6 +24,7 @@ class Batch():
         '''Read assets from md5sum-style inventory file'''
 
         assets = []
+
         with open(mapfile) as handle:
             lines = [line.strip() for line in handle]
 
