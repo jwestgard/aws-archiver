@@ -10,12 +10,13 @@ class Batch():
 
         '''Set up a batch of assets to be loaded based on supplied args'''
 
-        print(args)
         if args.mapfile:
             self.mapfile = args.mapfile
             self.contents = self.from_mapfile()
         elif args.asset:
             self.contents = [Asset(path=args.asset)]
+        else:
+            self.contents = []
 
 
     def from_mapfile(self):
