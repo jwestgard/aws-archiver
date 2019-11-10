@@ -28,26 +28,18 @@ subcommands:
     deposit (dep)
                  Deposit resources to S3
 
-
 usage: archiver deposit [-h] -b BUCKET [-c CHUNK] [-s STORAGE] [-n NAME]
                         [-t THREADS] (-m MAPFILE | -a ASSET)
 
 Deposit a batch of resources to S3
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -b BUCKET, --bucket BUCKET
-                        S3 bucket to load to
-  -c CHUNK, --chunk CHUNK
-                        Chunk size for multipart uploads
-  -s STORAGE, --storage STORAGE
-                        S3 storage class
-  -n NAME, --name NAME  Batch identifier or name
-  -t THREADS, --threads THREADS
-                        Maximum number of concurrent threads
-  -m MAPFILE, --mapfile MAPFILE
-                        Archive assets in inventory file
-  -a ASSET, --asset ASSET
-                        Archive a single asset
-
+  -h, --help                      show this help message and exit
+  -b BUCKET, --bucket BUCKET      S3 bucket to load to
+  -c CHUNK, --chunk CHUNK         Chunk size for multipart uploads
+  -s STORAGE, --storage STORAGE   S3 storage class
+  -n NAME, --name NAME            Batch identifier or name
+  -t THREADS, --threads THREADS   Maximum number of concurrent threads
+  -m MAPFILE, --mapfile MAPFILE   Archive assets in inventory file
+  -a ASSET, --asset ASSET         Archive a single asset
 ```
