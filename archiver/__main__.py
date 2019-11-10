@@ -66,6 +66,12 @@ def main():
                         help='Batch identifier or name',
                         default='test_batch'
     )
+    deposit_parser.add_argument(
+                        '-t', '--threads',
+                        action='store',
+                        help='Maximum number of concurrent threads',
+                        default=10
+    )
 
     # argument parser for specifying the asset or list of assets to deposit
     files_group = deposit_parser.add_mutually_exclusive_group(required=True)

@@ -1,19 +1,51 @@
-from boto3.s3.transfer import TransferConfig
-import json
+import boto3
+from botocore.exceptions import ClientError
+import hashlib
+import logging
+import os
+import sys
+import threading
 
 from .asset import Asset
 from .batch import Batch
-from .s3 import calculate_etag
-from .s3 import multipart_upload
 
 
-def calculate_chunk_bytes(chunk_string):
-    if chunk_string.endswith('MB'):
-        return int(chunk_string[:-2]) * (1024**2)
-    elif chunk_string.endswith('GB'):
-        return int(chunk_string[:-2]) * (1024**3)
+class ProgressPercentage():
+
+    '''Display upload progress with callback'''
+
+    def __init__(self, asset):
+        self.asset = asset
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+    
+    def __call__(self, bytes_amount):
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            pct = (self._seen_so_far / self.asset.bytes) * 100
+            sys.stdout.write(f'\r  {self.asset.filename} -> ' +    
+                             f'{self._seen_so_far}/{self.asset.bytes} ({pct:.2f}%)'
+                )
+            sys.stdout.flush()
+
+
+def calculate_etag(path, chunk_size):
+
+    '''Calculate the AWS etag (md5 or hash tree for files larger than chunk size)'''
+
+    md5s = []
+    with open(path, 'rb') as handle:
+        while True:
+            data = handle.read(chunk_size)
+            if not data:
+                break
+            md5s.append(hashlib.md5(data))
+
+    if len(md5s) == 1:
+        return md5s[0].hexdigest()
     else:
-        raise ConfigException
+        digests = hashlib.md5(b''.join([m.digest() for m in md5s]))
+        return f'{digests.hexdigest()}-{len(md5s)}'
 
 
 def deposit(args):
@@ -21,53 +53,59 @@ def deposit(args):
     '''Deposit a set of files to AWS'''
 
     batch = Batch(args)
-    chunk_bytes = calculate_chunk_bytes(args.chunk)
-    print(f'Running deposit subcommand with these options:')
-    print(f'  - Target Bucket: {args.bucket}')
-    print(f'  - Storage Class: {args.storage}')
-    print(f'  - Chunk Size:    {args.chunk} ({chunk_bytes} bytes)')
-    print()
-    
-    config = TransferConfig(multipart_threshold=chunk_bytes, 
-                            max_concurrency=10,
-                            multipart_chunksize=chunk_bytes, 
-                            use_threads=True
-                            )
 
-    print(f'Depositing {len(batch.contents)} assets ...')
+    # Deisplay batch configuration information to the user
+    sys.stdout.write(f'Running deposit command with the following options:\n')
+    sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
+    sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
+    sys.stdout.write(f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n\n')
+
+    # Process and transfer each asset in the batch contents
+    sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
     for n, asset in enumerate(batch.contents, 1):
-        header = f'({n}) {asset.filename.upper()}'
-        print('\n' + header)
-        print('=' * len(header))
-        print(f'    FILE: {asset.local_path}')
+        asset.header = f'({n}) {asset.filename.upper()}'
         asset.key_path = f'{batch.name}/{asset.filename}'
-        print(f' KEYPATH: {asset.key_path}')
-        print(f'     EXT: {asset.extension}')
-        print(f'   MTIME: {asset.mtime}')
-        print(f'   BYTES: {asset.bytes}')
-        print(f'     MD5: {asset.md5}')
-        expected_etag = calculate_etag(asset.local_path, chunk_size=chunk_bytes)
-        print(f'    ETAG: {expected_etag}')
-        print()
-        
-        extras = {'Metadata': {'md5': asset.md5,
-                               'bytes': str(asset.bytes)},
-                  'StorageClass': args.storage}
+        asset.expected_etag = calculate_etag(asset.local_path, 
+                                             chunk_size=batch.chunk_bytes)
 
-        # Send the file
-        response = multipart_upload(asset.local_path, 
-                                    args.bucket, 
-                                    asset.key_path, 
-                                    extra_args=extras,
-                                    config=config)
+        # Prepare custom metadata to attach to the asset
+        asset.extra_args = {'Metadata': {
+                                'md5': asset.md5,
+                                'bytes': str(asset.bytes)
+                                },
+                            'StorageClass': batch.storage_class
+        }
 
-        #resp_meta = json.loads(response)
-        #print(resp_meta)
-        s3md5 = response['ResponseMetadata']['HTTPHeaders']['x-amz-meta-md5']
+        # Display Asset information to the user
+        sys.stdout.write(f'\n{asset.header}\n{"=" * len(asset.header)}\n')
+        sys.stdout.write(f'    FILE: {asset.local_path}\n')
+        sys.stdout.write(f' KEYPATH: {asset.key_path}\n')
+        sys.stdout.write(f'     EXT: {asset.extension}\n')
+        sys.stdout.write(f'   MTIME: {asset.mtime}\n')
+        sys.stdout.write(f'   BYTES: {asset.bytes}\n')
+        sys.stdout.write(f'     MD5: {asset.md5}\n')
+        sys.stdout.write(f'    ETAG: {asset.expected_etag}\n\n')
 
-        if s3md5 == asset.md5:
-            print(f' -> {s3md5} = {asset.md5} -> MD5 match! Transfer success!')
+        # Send the file, optionally in multipart, multithreaded mode
+        s3 = boto3.resource('s3')
+        progress_tracker = ProgressPercentage(asset)
+        s3.meta.client.upload_file(asset.local_path, 
+                                   batch.bucket, 
+                                   asset.key_path, 
+                                   ExtraArgs=asset.extra_args,
+                                   Config=batch.aws_config,
+                                   Callback=progress_tracker
+        )
+
+        # Validate the upload with a head request to get the remote Etag
+        sys.stdout.write('\n\n  Upload complete! Verifying...\n')
+        response = s3.meta.client.head_object(Bucket=batch.bucket, Key=asset.key_path)
+        # Pull the AWS etag from the response and strip quotes
+        remote_etag = response['ResponseMetadata']['HTTPHeaders']['etag'].replace('"','')
+        sys.stdout.write(f'  -> Local:  {asset.expected_etag}\n')
+        sys.stdout.write(f'  -> Remote: {remote_etag}\n')
+        if remote_etag == asset.expected_etag:
+            sys.stdout.write(f'  ETag match! Transfer success!\n')
         else:
-            print(f' -> Something went wrong.')
+            sys.stdout.write(f'  Something went wrong.\n')
 
-        print()
