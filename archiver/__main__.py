@@ -70,6 +70,7 @@ def main():
                         '-t', '--threads',
                         action='store',
                         help='Maximum number of concurrent threads',
+                        type=int,
                         default=10
     )
 

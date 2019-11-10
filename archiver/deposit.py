@@ -55,10 +55,12 @@ def deposit(args):
     batch = Batch(args)
 
     # Deisplay batch configuration information to the user
-    sys.stdout.write(f'Running deposit command with the following options:\n')
+    sys.stdout.write(f'Running deposit command with the following options:\n\n')
     sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
     sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
-    sys.stdout.write(f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n\n')
+    sys.stdout.write(f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n')
+    sys.stdout.write(f'  - Use Threads: {batch.use_threads}\n')
+    sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n\n')
 
     # Process and transfer each asset in the batch contents
     sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
@@ -102,8 +104,8 @@ def deposit(args):
         response = s3.meta.client.head_object(Bucket=batch.bucket, Key=asset.key_path)
         # Pull the AWS etag from the response and strip quotes
         remote_etag = response['ResponseMetadata']['HTTPHeaders']['etag'].replace('"','')
-        sys.stdout.write(f'  -> Local:  {asset.expected_etag}\n')
-        sys.stdout.write(f'  -> Remote: {remote_etag}\n')
+        sys.stdout.write(f'    -> Local:  {asset.expected_etag}\n')
+        sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
         if remote_etag == asset.expected_etag:
             sys.stdout.write(f'  ETag match! Transfer success!\n')
         else:
