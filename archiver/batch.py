@@ -10,6 +10,7 @@ class Batch():
 
         '''Set up a batch of assets to be loaded based on supplied args'''
 
+        self.name = args.name
         if args.mapfile:
             self.mapfile = args.mapfile
             self.contents = self.from_mapfile()
@@ -25,7 +26,7 @@ class Batch():
 
         assets = []
 
-        with open(mapfile) as handle:
+        with open(self.mapfile) as handle:
             lines = [line.strip() for line in handle]
 
         for line in lines:
@@ -33,3 +34,5 @@ class Batch():
             assets.append(Asset(path, md5))
 
         return assets
+
+

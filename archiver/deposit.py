@@ -1,15 +1,19 @@
-import boto3
 from boto3.s3.transfer import TransferConfig
-from botocore.exceptions import ClientError
-import logging
-import os
-import sys
-import threading
+import json
 
-from .batch import Batch
 from .asset import Asset
+from .batch import Batch
+from .s3 import calculate_etag
+from .s3 import multipart_upload
 
-BUCKET_NAME = "YOUR_BUCKET_NAME"
+
+def calculate_chunk_bytes(chunk_string):
+    if chunk_string.endswith('MB'):
+        return int(chunk_string[:-2]) * (1024**2)
+    elif chunk_string.endswith('GB'):
+        return int(chunk_string[:-2]) * (1024**3)
+    else:
+        raise ConfigException
 
 
 def deposit(args):
@@ -17,74 +21,53 @@ def deposit(args):
     '''Deposit a set of files to AWS'''
 
     batch = Batch(args)
+    chunk_bytes = calculate_chunk_bytes(args.chunk)
+    print(f'Running deposit subcommand with these options:')
+    print(f'  - Target Bucket: {args.bucket}')
+    print(f'  - Storage Class: {args.storage}')
+    print(f'  - Chunk Size:    {args.chunk} ({chunk_bytes} bytes)')
+    print()
     
-    print(f'\nAWS Archiver -- Batch Deposit')
-    print(f'Depositing {len(batch.contents)} assets ...')
+    config = TransferConfig(multipart_threshold=chunk_bytes, 
+                            max_concurrency=10,
+                            multipart_chunksize=chunk_bytes, 
+                            use_threads=True
+                            )
 
+    print(f'Depositing {len(batch.contents)} assets ...')
     for n, asset in enumerate(batch.contents, 1):
         header = f'({n}) {asset.filename.upper()}'
         print('\n' + header)
         print('=' * len(header))
-        print(f'  PATH: {asset.path}')
-        print(f'   EXT: {asset.extension}')
-        print(f' MTIME: {asset.mtime}')
-        print(f' BYTES: {asset.bytes}')
-        print(f'   MD5: {asset.md5}')
+        print(f'    FILE: {asset.local_path}')
+        asset.key_path = f'{batch.name}/{asset.filename}'
+        print(f' KEYPATH: {asset.key_path}')
+        print(f'     EXT: {asset.extension}')
+        print(f'   MTIME: {asset.mtime}')
+        print(f'   BYTES: {asset.bytes}')
+        print(f'     MD5: {asset.md5}')
+        expected_etag = calculate_etag(asset.local_path, chunk_size=chunk_bytes)
+        print(f'    ETAG: {expected_etag}')
+        print()
+        
+        extras = {'Metadata': {'md5': asset.md5,
+                               'bytes': str(asset.bytes)},
+                  'StorageClass': args.storage}
 
+        # Send the file
+        response = multipart_upload(asset.local_path, 
+                                    args.bucket, 
+                                    asset.key_path, 
+                                    extra_args=extras,
+                                    config=config)
 
-def multipart_upload(filepath):
+        #resp_meta = json.loads(response)
+        #print(resp_meta)
+        s3md5 = response['ResponseMetadata']['HTTPHeaders']['x-amz-meta-md5']
 
-    config = TransferConfig(multipart_threshold=1024 * 25, 
-                            max_concurrency=10,
-                            multipart_chunksize=1024 * 25, 
-                            use_threads=True
-                            )
+        if s3md5 == asset.md5:
+            print(f' -> {s3md5} = {asset.md5} -> MD5 match! Transfer success!')
+        else:
+            print(f' -> Something went wrong.')
 
-    key_path = 'multipart_files/largefile.pdf'
-
-    s3.meta.client.upload_file(file_path, BUCKET_NAME, key_path,
-                               ExtraArgs={'ACL': 'public-read', 
-                                          'ContentType': 'text/pdf'},
-                               Config=config,
-                               Callback=ProgressPercentage(file_path)
-                               )
-
-
-class ProgressPercentage(object):
-
-    def __init__(self, filename):
-        self._filename = filename
-        self._size = float(os.path.getsize(filename))
-        self._seen_so_far = 0
-        self._lock = threading.Lock()
-    
-    def __call__(self, bytes_amount):
-        # To simplify we'll assume this is hooked up
-        # to a single filename.
-        with self._lock:
-            self._seen_so_far += bytes_amount
-            percentage = (self._seen_so_far / self._size) * 100
-            sys.stdout.write(
-                "\r%s  %s / %s  (%.2f%%)" % (
-                    self._filename, self._seen_so_far, self._size,
-                    percentage))
-            sys.stdout.flush()
-
-
-def calculate_s3_etag(file_path, chunk_size=8 * 1024 * 1024):
-
-    md5s = []
-
-    with open(file_path, 'rb') as fp:
-        while True:
-            data = fp.read(chunk_size)
-            if not data:
-                break
-            md5s.append(hashlib.md5(data))
-
-    if len(md5s) == 1:
-        return '"{}"'.format(md5s[0].hexdigest())
-
-    digests = b''.join(m.digest() for m in md5s)
-    digests_md5 = hashlib.md5(digests)
-    return '"{}-{}"'.format(digests_md5.hexdigest(), len(md5s))
+        print()
