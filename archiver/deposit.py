@@ -23,15 +23,17 @@ class ProgressPercentage():
         with self._lock:
             self._seen_so_far += bytes_amount
             pct = (self._seen_so_far / self.asset.bytes) * 100
-            sys.stdout.write(f'\r  {self.asset.filename} -> ' +    
-                             f'{self._seen_so_far}/{self.asset.bytes} ({pct:.2f}%)'
+            sys.stdout.write(
+                f'\r  {self.asset.filename} -> ' +    
+                f'{self._seen_so_far}/{self.asset.bytes} ({pct:.2f}%)'
                 )
             sys.stdout.flush()
 
 
 def calculate_etag(path, chunk_size):
 
-    '''Calculate the AWS etag (md5 or hash tree for files larger than chunk size)'''
+    '''Calculate the AWS etag (md5, or hash tree for files larger than chunk
+         size)'''
 
     md5s = []
     with open(path, 'rb') as handle:
@@ -58,9 +60,12 @@ def deposit(args):
     sys.stdout.write(f'Running deposit command with the following options:\n\n')
     sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
     sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
-    sys.stdout.write(f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n')
+    sys.stdout.write(
+        f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n'
+        )
     sys.stdout.write(f'  - Use Threads: {batch.use_threads}\n')
-    sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n\n')
+    sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n')
+    sys.stdout.write(f'  - AWS Profile: {args.profile}\n\n')
 
     # Process and transfer each asset in the batch contents
     sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
@@ -68,7 +73,8 @@ def deposit(args):
         asset.header = f'({n}) {asset.filename.upper()}'
         asset.key_path = f'{batch.name}/{asset.filename}'
         asset.expected_etag = calculate_etag(asset.local_path, 
-                                             chunk_size=batch.chunk_bytes)
+                                             chunk_size=batch.chunk_bytes
+                                             )
 
         # Prepare custom metadata to attach to the asset
         asset.extra_args = {'Metadata': {
@@ -88,8 +94,11 @@ def deposit(args):
         sys.stdout.write(f'     MD5: {asset.md5}\n')
         sys.stdout.write(f'    ETAG: {asset.expected_etag}\n\n')
 
+        # Set up a session with specified authentication profile
+        session = boto3.session.Session(profile_name=args.profile)
+        s3 = session.resource('s3')
+
         # Send the file, optionally in multipart, multithreaded mode
-        s3 = boto3.resource('s3')
         progress_tracker = ProgressPercentage(asset)
         s3.meta.client.upload_file(asset.local_path, 
                                    batch.bucket, 
@@ -101,9 +110,11 @@ def deposit(args):
 
         # Validate the upload with a head request to get the remote Etag
         sys.stdout.write('\n\n  Upload complete! Verifying...\n')
-        response = s3.meta.client.head_object(Bucket=batch.bucket, Key=asset.key_path)
+        response = s3.meta.client.head_object(Bucket=batch.bucket,
+                                              Key=asset.key_path)
         # Pull the AWS etag from the response and strip quotes
-        remote_etag = response['ResponseMetadata']['HTTPHeaders']['etag'].replace('"','')
+        headers = response['ResponseMetadata']['HTTPHeaders']
+        remote_etag = headers['etag'].replace('"', '')
         sys.stdout.write(f'    -> Local:  {asset.expected_etag}\n')
         sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
         if remote_etag == asset.expected_etag:

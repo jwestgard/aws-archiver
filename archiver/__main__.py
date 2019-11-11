@@ -55,16 +55,22 @@ def main():
                         default='5MB'
     )
     deposit_parser.add_argument(
-                        '-s', '--storage',
-                        action='store',
-                        help='S3 storage class',
-                        default='DEEP_ARCHIVE'
-    )
-    deposit_parser.add_argument(
                         '-n', '--name',
                         action='store',
                         help='Batch identifier or name',
                         default='test_batch'
+    )
+    deposit_parser.add_argument(
+                        '-p', '--profile',
+                        action='store',
+                        help='AWS authorization profile',
+                        default='default'
+    )
+    deposit_parser.add_argument(
+                        '-s', '--storage',
+                        action='store',
+                        help='S3 storage class',
+                        default='DEEP_ARCHIVE'
     )
     deposit_parser.add_argument(
                         '-t', '--threads',
