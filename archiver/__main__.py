@@ -9,6 +9,7 @@ from .deposit import deposit
 
 
 def print_header(command):
+    """Generate script header and display it in the console."""
     title = f'| AWS Archiver |'
     border = '=' * len(title)
     spacer = '|' + ' '*(len(title)-2) + '|'
@@ -16,13 +17,12 @@ def print_header(command):
 
 
 def main():
-
-    '''Parse args and set the chosen sub-command as the default function'''
+    """Parse args and set the chosen sub-command as the default function."""
 
     # main parser for command line arguments
     parser = argparse.ArgumentParser(description='S3 preservation archiver')
     subparsers = parser.add_subparsers(
-                        title='subcommands', 
+                        title='subcommands',
                         description='valid subcommands',
                         help='-h additional help',
                         metavar='{dep}',
@@ -38,7 +38,7 @@ def main():
 
     # argument parser for the deposit sub-command
     deposit_parser = subparsers.add_parser(
-                        'deposit', aliases=['dep'], 
+                        'deposit', aliases=['dep'],
                         help='Deposit resources to S3',
                         description='Deposit a batch of resources to S3'
     )

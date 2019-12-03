@@ -3,8 +3,9 @@ import os
 
 
 class Asset():
-
-    '''Class representing a binary resource to be archived'''
+    """
+    Class representing a binary resource to be archived.
+    """
 
     def __init__(self, path, md5=None):
         self.local_path = path
@@ -17,6 +18,9 @@ class Asset():
 
 
     def calculate_md5(self):
+        """
+        Calclulate and return the object's md5 hash.
+        """
         hash = hashlib.md5()
         with open(self.local_path, 'rb') as f:
             while True:

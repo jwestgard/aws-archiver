@@ -4,9 +4,9 @@ from .asset import Asset
 
 
 def calculate_chunk_bytes(chunk_string):
-
-    '''Convert the human-readable chunk size to bytes as an integer'''
-
+    """
+    Return the chunk size in bytes after converting he human-readable chunk size specification.
+    """
     if chunk_string.endswith('MB'):
         return int(chunk_string[:-2]) * (1024**2)
     elif chunk_string.endswith('GB'):
@@ -16,13 +16,13 @@ def calculate_chunk_bytes(chunk_string):
 
 
 class Batch():
-
-    '''Class representing a set of resources to be archived and AWS configuration'''
+    """
+    Class representing a set of resources to be archived,
+    and an AWS configuration where they will be archived.
+    """
 
     def __init__(self, args):
-
-        '''Set up a batch of assets to be loaded according to supplied args'''
-
+        """Set up a batch of assets to be loaded with the supplied args."""
         self.name = args.name
         self.chunk_bytes = calculate_chunk_bytes(args.chunk)
         self.bucket = args.bucket
@@ -48,9 +48,8 @@ class Batch():
 
         # Set up the AWS transfer configuration for the batch
         self.aws_config = TransferConfig(
-                                multipart_threshold=self.chunk_bytes, 
+                                multipart_threshold=self.chunk_bytes,
                                 max_concurrency=self.max_threads,
-                                multipart_chunksize=self.chunk_bytes, 
+                                multipart_chunksize=self.chunk_bytes,
                                 use_threads=self.use_threads
                                 )
-
