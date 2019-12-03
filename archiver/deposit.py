@@ -55,9 +55,10 @@ def deposit(args):
     """Deposit a set of files into AWS."""
     batch = Batch(args)
 
-    # Deisplay batch configuration information to the user
+    # Display batch configuration information to the user
     sys.stdout.write(f'Running deposit command with the following options:\n\n')
     sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
+    sys.stdout.write(f'  - Local Rootdir: {batch.root}\n')
     sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
     sys.stdout.write(
         f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n'
@@ -68,6 +69,15 @@ def deposit(args):
 
     # Process and transfer each asset in the batch contents
     sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
+
+    if batch.mapfile:
+        mapfile_path = os.path.join(batch.logdir, batch.mapfile + '.tmp')
+        mapfile = open(mapfile_path, 'w+')
+        fieldnames = ['id', 'relpath', 'filename', 'md5', 'bytes',
+                        'keypath', 'etag', 'result']
+        writer = csv.DictWriter(mapfile, fieldnames=fieldnames)
+        writer.writeheader()
+
     for n, asset in enumerate(batch.contents, 1):
         asset.header = f'({n}) {asset.filename.upper()}'
         asset.key_path = f'{batch.name}/{asset.relpath}'
@@ -113,11 +123,30 @@ def deposit(args):
                                               Key=asset.key_path)
         # Pull the AWS etag from the response and strip quotes
         headers = response['ResponseMetadata']['HTTPHeaders']
-
+        logfile = asset.key_path.replace('/', '-') + '.json'
+        logpath = os.path.join(batch.logdir, logfile)
+        with open(logpath, 'w+') as handle:
+            json.dump(response['ResponseMetadata'], handle, indent=2)
         remote_etag = headers['etag'].replace('"', '')
         sys.stdout.write(f'    -> Local:  {asset.expected_etag}\n')
         sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
         if remote_etag == asset.expected_etag:
             sys.stdout.write(f'  ETag match! Transfer success!\n')
+            result = 'success'
         else:
             sys.stdout.write(f'  Something went wrong.\n')
+            result = 'failed'
+
+        row = {
+            'id': n,
+            'relpath': asset.relpath,
+            'filename': asset.filename,
+            'md5': asset.md5,
+            'bytes': asset.bytes,
+            'keypath': asset.keypath,
+            'etag': remote_etag,
+            'result': result
+        }
+        writer.writerow(row)
+
+    mapfile.close()

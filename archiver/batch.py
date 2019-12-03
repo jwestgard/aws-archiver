@@ -26,6 +26,7 @@ class Batch():
         self.name = args.name
         self.chunk_bytes = calculate_chunk_bytes(args.chunk)
         self.bucket = args.bucket
+        self.root = os.path.abspath(args.root)
         self.storage_class = args.storage
 
         self.logdir = args.logs
@@ -43,13 +44,13 @@ class Batch():
             self.contents = []
             with open(args.mapfile) as handle:
                 for line in handle:
-                    # passing None as delimiter splits on any amount of whitespace
+                    # using None as delimiter splits on any whitespace
                     md5, path = line.strip().split(None, 1)
-                    self.contents.append(Asset(path, md5))
+                    self.contents.append(Asset(path, self.root, md5))
 
         # Otherwise process a single asset path passed as an argument
         else:
-            self.contents = [Asset(path=args.asset)]
+            self.contents = [Asset(args.asset, self.root)]
 
         # Set up the AWS transfer configuration for the batch
         self.aws_config = TransferConfig(
