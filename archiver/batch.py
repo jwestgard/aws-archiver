@@ -5,7 +5,7 @@ from .asset import Asset
 
 def calculate_chunk_bytes(chunk_string):
     """
-    Return the chunk size in bytes after converting he human-readable chunk size specification.
+    Return the chunk size in bytes after converting the human-readable chunk size specification.
     """
     if chunk_string.endswith('MB'):
         return int(chunk_string[:-2]) * (1024**2)
@@ -27,6 +27,11 @@ class Batch():
         self.chunk_bytes = calculate_chunk_bytes(args.chunk)
         self.bucket = args.bucket
         self.storage_class = args.storage
+
+        self.logdir = args.logs
+        if not os.path.isdir(self.logdir):
+            os.mkdir(self.logdir)
+
         self.max_threads = args.threads
         if self.max_threads == 1:
             self.use_threads = False

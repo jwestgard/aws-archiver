@@ -13,7 +13,9 @@ def print_header(command):
     title = f'| AWS Archiver |'
     border = '=' * len(title)
     spacer = '|' + ' '*(len(title)-2) + '|'
-    print('\n'.join(['', border, spacer, title, spacer, border, '']))
+    sys.stdout.write(
+        '\n'.join(['', border, spacer, title, spacer, border, '', ''])
+    )
 
 
 def main():
@@ -46,13 +48,19 @@ def main():
                         '-b', '--bucket',
                         action='store',
                         required=True,
-                        help='S3 bucket to load to'
+                        help='S3 bucket to deposit files into'
     )
     deposit_parser.add_argument(
                         '-c', '--chunk',
                         action='store',
                         help='Chunk size for multipart uploads',
                         default='5MB'
+    )
+    deposit_parser.add_argument(
+                        '-l', '--logs',
+                        action='store',
+                        help='Location to store log files',
+                        default='logs'
     )
     deposit_parser.add_argument(
                         '-n', '--name',
@@ -65,6 +73,12 @@ def main():
                         action='store',
                         help='AWS authorization profile',
                         default='default'
+    )
+    deposit_parser.add_argument(
+                            '-r', '--root',
+                            action='store',
+                            help='Root dir of files being archived',
+                            default='.'
     )
     deposit_parser.add_argument(
                         '-s', '--storage',

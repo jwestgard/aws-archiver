@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
 import hashlib
+import json
 import logging
 import os
 import sys
@@ -11,30 +12,30 @@ from .batch import Batch
 
 
 class ProgressPercentage():
-
-    '''Display upload progress with callback'''
+    """Display upload progress using callbacks."""
 
     def __init__(self, asset):
         self.asset = asset
         self._seen_so_far = 0
         self._lock = threading.Lock()
-    
+
     def __call__(self, bytes_amount):
         with self._lock:
             self._seen_so_far += bytes_amount
             pct = (self._seen_so_far / self.asset.bytes) * 100
             sys.stdout.write(
-                f'\r  {self.asset.filename} -> ' +    
+                f'\r  {self.asset.filename} -> ' +
                 f'{self._seen_so_far}/{self.asset.bytes} ({pct:.2f}%)'
                 )
             sys.stdout.flush()
 
 
 def calculate_etag(path, chunk_size):
-
-    '''Calculate the AWS etag (md5, or hash tree for files larger than chunk
-         size)'''
-
+    """
+    Calculate the AWS etag: either the md5 hash, or for files larger than
+    the specified chunk size, the hash of all the chunk hashes concatenated
+    together, followed by the number of chunks.
+    """
     md5s = []
     with open(path, 'rb') as handle:
         while True:
@@ -51,9 +52,7 @@ def calculate_etag(path, chunk_size):
 
 
 def deposit(args):
-
-    '''Deposit a set of files to AWS'''
-
+    """Deposit a set of files into AWS."""
     batch = Batch(args)
 
     # Deisplay batch configuration information to the user
@@ -71,8 +70,8 @@ def deposit(args):
     sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
     for n, asset in enumerate(batch.contents, 1):
         asset.header = f'({n}) {asset.filename.upper()}'
-        asset.key_path = f'{batch.name}/{asset.filename}'
-        asset.expected_etag = calculate_etag(asset.local_path, 
+        asset.key_path = f'{batch.name}/{asset.relpath}'
+        asset.expected_etag = calculate_etag(asset.local_path,
                                              chunk_size=batch.chunk_bytes
                                              )
 
@@ -100,9 +99,9 @@ def deposit(args):
 
         # Send the file, optionally in multipart, multithreaded mode
         progress_tracker = ProgressPercentage(asset)
-        s3.meta.client.upload_file(asset.local_path, 
-                                   batch.bucket, 
-                                   asset.key_path, 
+        s3.meta.client.upload_file(asset.local_path,
+                                   batch.bucket,
+                                   asset.key_path,
                                    ExtraArgs=asset.extra_args,
                                    Config=batch.aws_config,
                                    Callback=progress_tracker
@@ -114,6 +113,7 @@ def deposit(args):
                                               Key=asset.key_path)
         # Pull the AWS etag from the response and strip quotes
         headers = response['ResponseMetadata']['HTTPHeaders']
+
         remote_etag = headers['etag'].replace('"', '')
         sys.stdout.write(f'    -> Local:  {asset.expected_etag}\n')
         sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
@@ -121,4 +121,3 @@ def deposit(args):
             sys.stdout.write(f'  ETag match! Transfer success!\n')
         else:
             sys.stdout.write(f'  Something went wrong.\n')
-
