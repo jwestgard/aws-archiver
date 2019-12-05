@@ -44,9 +44,11 @@ required arguments (choose one):
   -m MAPFILE, --mapfile MAPFILE  Archive assets in inventory file
   -a ASSET, --asset ASSET        Archive a single asset
 
+additional required argument:
+  -b BUCKET, --bucket BUCKET     S3 bucket to deposit files into
+
 optional arguments:
   -h, --help                     show this help message and exit
-  -b BUCKET, --bucket BUCKET     S3 bucket to deposit files into
   -c CHUNK, --chunk CHUNK        Chunk size for multipart uploads
   -l LOGS, --logs LOGS           Location to store log files
   -n NAME, --name NAME           Batch identifier or name
@@ -55,3 +57,17 @@ optional arguments:
   -s STORAGE, --storage STORAGE  S3 storage class
   -t THREADS, --threads THREADS  Maximum number of concurrent threads
 ```
+
+### Default option values
+Many of the arguments listed above as "optional" are necessary for the load and therefore have the following default values:
+
+| option            | default       |
+|-------------------|---------------|
+| '-c', '--chunk'   | '5MB'         |
+| '-l', '--logs'    | 'logs'        |
+| '-n', '--name'    | 'test_batch'  |
+| '-p', '--profile' | 'default'     |
+| '-r', '--root'    | '.'           |
+| '-s', '--storage' | 'DEEP_ARCHIVE'|
+| '-t', '--threads' | 10            |
+  
