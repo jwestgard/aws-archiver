@@ -1,5 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
+import csv
 import hashlib
 import json
 import logging
@@ -143,7 +144,7 @@ def deposit(args):
             'filename': asset.filename,
             'md5': asset.md5,
             'bytes': asset.bytes,
-            'keypath': asset.keypath,
+            'keypath': asset.key_path,
             'etag': remote_etag,
             'result': result
         }

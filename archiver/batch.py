@@ -41,6 +41,7 @@ class Batch():
 
         # Read assets information from an md5sum-style listing
         if args.mapfile:
+            self.mapfile = args.mapfile
             self.contents = []
             with open(args.mapfile) as handle:
                 for line in handle:
@@ -50,6 +51,7 @@ class Batch():
 
         # Otherwise process a single asset path passed as an argument
         else:
+            self.mapfile = None
             self.contents = [Asset(args.asset, self.root)]
 
         # Set up the AWS transfer configuration for the batch
