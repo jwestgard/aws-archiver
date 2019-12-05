@@ -72,6 +72,6 @@ Many of the arguments listed above as "optional" are necessary for the load and 
 | '-t', '--threads' | 10            |
   
 ## Known issues
-The project is designed to preserve 'original order' of files relative to the batch by creating an AWS keypath that matches the string representation of the directory path on the local filesystem.  This is a neccessary requirement in cases where the files being archived represent a "package" of related files, and also helps prevent path collisions at deposit time. The batch manifest, however, normally contains the full local path to the file being archived. 
+The project is designed to preserve "original order" of files relative to the batch by creating an AWS keypath that matches the string representation of the directory path on the local filesystem.  This is a neccessary requirement in cases where the files being archived represent a "package" of related files, and also helps prevent path collisions at deposit time. The batch manifest, however, normally contains the full local path to the file being archived. 
 
 Currently, the calculation of the path relative to the batch root relies on the user supplying the absolute local path to the batch root with the ```-r, --root``` option. It has been observed that the calculation of the relative path can go awry, causing the deposit to fail. Until a more reliable solution can be devised, a workaround is to run the script from the root of the batch, with the default option value (```'.'```).
