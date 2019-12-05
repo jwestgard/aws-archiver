@@ -12,7 +12,11 @@ $ cd aws-archiver && pip install -e .
 ```
 
 ## Usage
-The tool is still under development. Currently, there are two primary modes making a deposit: (1) as a single asset specified by the -a ASSET flag; or (2) as a batch defined in a mapfile or manifest listing the md5 hash and local path for each file being deposited (delimited by whitespace). The latter method's text file format is the same as the output of the UNIX md5sum utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's bin/ directory.
+The tool is still under development. Currently, there are two primary modes making a deposit: 
+  1. as a single asset specified by the ```-a ASSET``` flag; or 
+  2. as a batch defined in a mapfile or manifest listing the md5 hash and local path for each file being deposited (delimited by whitespace). 
+  
+The latter method's text file format is the same as the output of the UNIX ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's ```bin``` directory.
 
 ### Batch manifest generation
 To create a batch manifest, do:
@@ -21,7 +25,7 @@ To create a batch manifest, do:
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
-## Available parameters
+### Available parameters
 
 ```
 S3 preservation archiver
