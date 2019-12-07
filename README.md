@@ -22,13 +22,14 @@ For details on format and creation of batch manifests, see the following section
 Collections of files can be loaded using a manifest file. The format of the manifest is a simple text file that lists one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the UNIX ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's ```bin``` directory.
 
 To create a batch manifest with the included script, do:
-
 ```
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
-### Summary of options
+### AWS credentials
+The credentials to an AWS account are required for making deposits. This tool uses the boto3 library to manage authorization using AWS authentication profiles. These profiles are stored in ```~/.aws/credentials```. To choose a profile to use with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool will default to the default profile.
 
+### Summary of options
 ```
 S3 preservation archiver
 
