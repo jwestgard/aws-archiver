@@ -14,12 +14,14 @@ $ cd aws-archiver && pip install -e .
 ## Usage
 The tool is still under development. Currently, there are two primary modes making a deposit: 
   1. as a single asset specified by the ```-a ASSET``` flag; or 
-  2. as a batch defined in a mapfile or manifest listing the md5 hash and local path for each file being deposited (delimited by whitespace). 
-  
-The latter method's text file format is the same as the output of the UNIX ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's ```bin``` directory.
+  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` flag.
 
-### Batch manifest generation
-To create a batch manifest, do:
+For details on format and creation of batch manifests, see the following section.
+
+### Batch manifest file
+Collections of files can be loaded using a manifest file. The format of the manifest is a simple text file that lists one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the UNIX ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's ```bin``` directory.
+
+To create a batch manifest with the included script, do:
 
 ```
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
@@ -72,6 +74,7 @@ Many of the arguments listed above as "optional" are necessary for the load and 
 | '-t', '--threads' | 10            |
   
 ## Known issues
-This problem has now been described in [issue #3](https://github.com/jwestgard/aws-archiver/issues/3). The project is designed to preserve "original order" of files relative to the batch by creating an AWS keypath that matches the string representation of the directory path on the local filesystem.  This is a neccessary requirement in cases where the files being archived represent a "package" of related files, and also helps prevent path collisions at deposit time. The batch manifest, however, normally contains the full local path to the file being archived. 
+This relative path caluclulation problem has now been described in [issue #3](https://github.com/jwestgard/aws-archiver/issues/3).
 
-Currently, the calculation of the path relative to the batch root relies on the user supplying the absolute local path to the batch root with the ```-r, --root``` option. It has been observed that the calculation of the relative path can go awry, causing the deposit to fail. Until a more reliable solution can be devised, a workaround is to run the script from the root of the batch, with the default option value (```'.'```).
+## Development roadmap
+To facilitate loading large quantities of assets (i.e. multiple batches), a "batch of batches" mode will be added. This will provide the ability to define a set of batches in a CSV file containing the path to each batch manifest file as well as the values to use for each batch's options.
