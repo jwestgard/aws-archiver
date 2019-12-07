@@ -12,14 +12,14 @@ $ cd aws-archiver && pip install -e .
 ```
 
 ## Usage
-The tool is still under development. Currently, there are two primary modes making a deposit: 
-  1. as a single asset specified by the ```-a ASSET``` flag; or 
-  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` flag.
+The tool is still under development. Currently, there are two primary modes of making deposits: 
+  1. as a single asset specified by the ```-a ASSET``` option; or 
+  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` option.
 
 For details on format and creation of batch manifests, see the following section.
 
 ### Batch manifest file
-Collections of files can be loaded using a manifest file. The format of the manifest is a simple text file that lists one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the UNIX ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repostiory's ```bin``` directory.
+Collections of files are loaded using a manifest file. The format of the manifest is a text file listing one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the Unix ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repository's ```bin``` directory.
 
 To create a batch manifest with the included script, do:
 ```
@@ -27,7 +27,7 @@ $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
 ### AWS credentials
-The credentials to an AWS account are required for making deposits. This tool uses the boto3 library to manage authorization using AWS authentication profiles. These profiles are stored in ```~/.aws/credentials```. To choose a profile to use with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool will default to the default profile.
+AWS credentials are required for making deposits. This tool uses the boto3 library to manage authorization using AWS authentication profiles. These profiles are stored in ```~/.aws/credentials```. To choose a profile to use with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool will default to the default profile. The chosen profile must have write permission for the bucket specified in the ```-b BUCKET``` option.
 
 ### Summary of options
 ```
