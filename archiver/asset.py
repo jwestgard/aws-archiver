@@ -8,6 +8,8 @@ class Asset():
     """
 
     def __init__(self, path, batch_root, md5=None):
+        if not batch_root.endswith('/'):
+            batch_root += '/'
         self.local_path = path
         self.md5        = md5 or self.calculate_md5()
         self.filename   = os.path.basename(self.local_path)
@@ -15,11 +17,14 @@ class Asset():
         self.directory  = os.path.dirname(self.local_path)
         self.bytes      = os.path.getsize(self.local_path)
         self.extension  = os.path.splitext(self.filename)[1].lstrip('.').upper()
-        self.relpath    = os.path.relpath(self.local_path, batch_root)
+        if self.local_path.startswith(batch_root):
+            self.relpath = self.local_path[len(batch_root):]
+        else:
+            raise Exception("local path is outside of batch root")
 
     def calculate_md5(self):
         """
-        Calclulate and return the object's md5 hash.
+        Calculate and return the object's md5 hash.
         """
         hash = hashlib.md5()
         with open(self.local_path, 'rb') as f:

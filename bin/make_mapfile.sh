@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 ROOTDIR=$1
 OUTFILE=$2
 

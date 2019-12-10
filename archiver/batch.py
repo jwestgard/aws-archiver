@@ -27,6 +27,8 @@ class Batch():
         self.chunk_bytes = calculate_chunk_bytes(args.chunk)
         self.bucket = args.bucket
         self.root = os.path.abspath(args.root)
+        if not self.root.endswith('/'):
+            self.root += '/'
         self.storage_class = args.storage
 
         self.logdir = args.logs
