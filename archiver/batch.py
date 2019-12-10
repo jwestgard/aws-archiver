@@ -1,6 +1,8 @@
+import sys
+
 from boto3.s3.transfer import TransferConfig
 import os
-from .asset import Asset
+from .asset import Asset, PathOutOfScopeException
 
 
 def calculate_chunk_bytes(chunk_string):
@@ -41,20 +43,21 @@ class Batch():
         else:
             self.use_threads = True
 
+        self.contents = []
+
         # Read assets information from an md5sum-style listing
         if args.mapfile:
             self.mapfile = args.mapfile
-            self.contents = []
             with open(args.mapfile) as handle:
                 for line in handle:
                     # using None as delimiter splits on any whitespace
                     md5, path = line.strip().split(None, 1)
-                    self.contents.append(Asset(path, self.root, md5))
+                    self.add_asset(path, md5)
 
         # Otherwise process a single asset path passed as an argument
         else:
             self.mapfile = None
-            self.contents = [Asset(args.asset, self.root)]
+            self.add_asset(args.asset)
 
         # Set up the AWS transfer configuration for the batch
         self.aws_config = TransferConfig(
@@ -63,3 +66,10 @@ class Batch():
                                 multipart_chunksize=self.chunk_bytes,
                                 use_threads=self.use_threads
                                 )
+
+    def add_asset(self, path, md5=None):
+        try:
+            self.contents.append(Asset(path, self.root, md5))
+        except PathOutOfScopeException as e:
+            # TODO: use logging instead
+            print(f'Skipping {path}: {e}', file=sys.stderr)

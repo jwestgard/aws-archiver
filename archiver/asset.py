@@ -2,7 +2,19 @@ import hashlib
 import os
 
 
-class Asset():
+class PathOutOfScopeException(Exception):
+    """
+    Raised to indicate a local path falls outside the current batch root.
+    """
+    def __init__(self, path, base_path):
+        self.path = path
+        self.base_path = base_path
+
+    def __str__(self):
+        return f'{self.path} is not contained within {self.base_path}'
+
+
+class Asset:
     """
     Class representing a binary resource to be archived.
     """
@@ -20,7 +32,7 @@ class Asset():
         if self.local_path.startswith(batch_root):
             self.relpath = self.local_path[len(batch_root):]
         else:
-            raise Exception("local path is outside of batch root")
+            raise PathOutOfScopeException(path=self.local_path, base_path=batch_root)
 
     def calculate_md5(self):
         """
