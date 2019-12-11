@@ -38,12 +38,30 @@ class Asset:
         """
         Calculate and return the object's md5 hash.
         """
-        hash = hashlib.md5()
+        md5sum = hashlib.md5()
         with open(self.local_path, 'rb') as f:
-            while True:
-                data = f.read(8192)
-                if not data:
-                    break
-                else:
-                    hash.update(data)
-        return hash.hexdigest()
+            for data in f:
+                md5sum.update(data)
+        return md5sum.hexdigest()
+
+    def calculate_etag(self, chunk_size):
+        """
+        Calculate the AWS etag: either the md5 hash, or for files larger than
+        the specified chunk size, the hash of all the chunk hashes concatenated
+        together, followed by the number of chunks.
+        """
+        md5s = []
+        with open(self.local_path, 'rb') as handle:
+            for data in chunked(handle, chunk_size):
+                md5s.append(hashlib.md5(data))
+
+        if len(md5s) == 1:
+            return md5s[0].hexdigest()
+        else:
+            digests = hashlib.md5(b''.join([m.digest() for m in md5s]))
+            return f'{digests.hexdigest()}-{len(md5s)}'
+
+
+def chunked(handle, chunk_size):
+    # based on https://stackoverflow.com/a/54989668/5124907
+    return iter(lambda: handle.read(chunk_size), b'')
