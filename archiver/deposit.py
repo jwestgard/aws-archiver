@@ -1,5 +1,6 @@
 import boto3
-from botocore.exceptions import ClientError
+from boto3.exceptions import S3UploadFailedError
+from botocore.exceptions import ClientError, ProfileNotFound
 import csv
 import hashlib
 import json
@@ -9,7 +10,7 @@ import sys
 import threading
 
 from .asset import Asset
-from .batch import Batch
+from .batch import Batch, ConfigException
 
 
 class ProgressPercentage():
@@ -54,7 +55,11 @@ def calculate_etag(path, chunk_size):
 
 def deposit(args):
     """Deposit a set of files into AWS."""
-    batch = Batch(args)
+    try:
+        batch = Batch(args)
+    except ConfigException as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
     # Display batch configuration information to the user
     sys.stdout.write(f'Running deposit command with the following options:\n\n')
@@ -68,9 +73,6 @@ def deposit(args):
     sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n')
     sys.stdout.write(f'  - AWS Profile: {args.profile}\n\n')
 
-    # Process and transfer each asset in the batch contents
-    sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
-
     if batch.mapfile:
         mapfile_path = os.path.join(batch.logdir, batch.mapfile + '.tmp')
         mapfile = open(mapfile_path, 'w+')
@@ -78,6 +80,17 @@ def deposit(args):
                         'keypath', 'etag', 'result']
         writer = csv.DictWriter(mapfile, fieldnames=fieldnames)
         writer.writeheader()
+
+    # Set up a session with specified authentication profile
+    try:
+        session = boto3.session.Session(profile_name=args.profile)
+    except ProfileNotFound as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+    s3 = session.resource('s3')
+
+    # Process and transfer each asset in the batch contents
+    sys.stdout.write(f'Depositing {len(batch.contents)} assets ...\n')
 
     for n, asset in enumerate(batch.contents, 1):
         asset.header = f'({n}) {asset.filename.upper()}'
@@ -104,24 +117,31 @@ def deposit(args):
         sys.stdout.write(f'     MD5: {asset.md5}\n')
         sys.stdout.write(f'    ETAG: {asset.expected_etag}\n\n')
 
-        # Set up a session with specified authentication profile
-        session = boto3.session.Session(profile_name=args.profile)
-        s3 = session.resource('s3')
-
         # Send the file, optionally in multipart, multithreaded mode
         progress_tracker = ProgressPercentage(asset)
-        s3.meta.client.upload_file(asset.local_path,
-                                   batch.bucket,
-                                   asset.key_path,
-                                   ExtraArgs=asset.extra_args,
-                                   Config=batch.aws_config,
-                                   Callback=progress_tracker
-        )
+        try:
+            s3.meta.client.upload_file(
+                asset.local_path,
+                batch.bucket,
+                asset.key_path,
+                ExtraArgs=asset.extra_args,
+                Config=batch.aws_config,
+                Callback=progress_tracker
+            )
+        except S3UploadFailedError as e:
+            print(e, file=sys.stderr)
+            print('Continuing with the next asset', file=sys.stderr)
+            continue
 
         # Validate the upload with a head request to get the remote Etag
         sys.stdout.write('\n\n  Upload complete! Verifying...\n')
-        response = s3.meta.client.head_object(Bucket=batch.bucket,
-                                              Key=asset.key_path)
+        try:
+            response = s3.meta.client.head_object(Bucket=batch.bucket, Key=asset.key_path)
+        except ClientError as e:
+            print(f'Error verifying {batch.bucket}/{asset.key_path}: {e}', file=sys.stderr)
+            print('Continuing with the next asset', file=sys.stderr)
+            continue
+
         # Pull the AWS etag from the response and strip quotes
         headers = response['ResponseMetadata']['HTTPHeaders']
         logfile = asset.key_path.replace('/', '-') + '.json'

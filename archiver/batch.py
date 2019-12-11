@@ -5,6 +5,10 @@ import os
 from .asset import Asset, PathOutOfScopeException
 
 
+class ConfigException(Exception):
+    pass
+
+
 def calculate_chunk_bytes(chunk_string):
     """
     Return the chunk size in bytes after converting the human-readable chunk size specification.
@@ -14,7 +18,7 @@ def calculate_chunk_bytes(chunk_string):
     elif chunk_string.endswith('GB'):
         return int(chunk_string[:-2]) * (1024**3)
     else:
-        raise ConfigException
+        raise ConfigException("Chunk size must be given in MB or GB")
 
 
 class Batch():
@@ -69,7 +73,9 @@ class Batch():
 
     def add_asset(self, path, md5=None):
         try:
-            self.contents.append(Asset(path, self.root, md5))
+            asset = Asset(path, self.root, md5)
+            self.contents.append(asset)
+        except FileNotFoundError as e:
+            print(f'Skipping {path}: {e}', file=sys.stderr)
         except PathOutOfScopeException as e:
-            # TODO: use logging instead
             print(f'Skipping {path}: {e}', file=sys.stderr)
