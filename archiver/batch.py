@@ -8,11 +8,8 @@ from boto3.exceptions import S3UploadFailedError
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 
-from .asset import Asset, PathOutOfScopeException
-
-
-class ConfigException(Exception):
-    pass
+from .asset import Asset
+from .exceptions import ConfigException, PathOutOfScopeException
 
 
 class ProgressPercentage:
@@ -46,8 +43,7 @@ def calculate_chunk_bytes(chunk_string):
         raise ConfigException("Chunk size must be given in MB or GB")
 
 
-# Python doesn't like reading blocks larger than 1GB
-DEFAULT_CHUNK_SIZE = '1GB'
+DEFAULT_CHUNK_SIZE = '4GB'
 DEFAULT_STORAGE_CLASS = 'DEEP_ARCHIVE'
 DEFAULT_MAX_THREADS = 10
 DEFAULT_LOG_DIR = 'logs'

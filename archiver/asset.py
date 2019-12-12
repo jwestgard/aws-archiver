@@ -1,17 +1,9 @@
 import hashlib
 import os
 
+from .exceptions import ConfigException, PathOutOfScopeException
 
-class PathOutOfScopeException(Exception):
-    """
-    Raised to indicate a local path falls outside the current batch root.
-    """
-    def __init__(self, path, base_path):
-        self.path = path
-        self.base_path = base_path
-
-    def __str__(self):
-        return f'{self.path} is not contained within {self.base_path}'
+GB = 1024 ** 3
 
 
 class Asset:
@@ -52,13 +44,34 @@ class Asset:
         """
         md5s = []
         with open(self.local_path, 'rb') as handle:
-            for data in chunked(handle, chunk_size):
-                md5s.append(hashlib.md5(data))
+            if chunk_size < GB:
+                for data in chunked(handle, chunk_size):
+                    md5s.append(hashlib.md5(data))
+            else:
+                # Python doesn't like reading more than 1GB of bytes from a file at a time.
+                # To get around this, we read 1GB at a time and assemble those portions into
+                # the final md5sum.
+                if chunk_size % GB != 0:
+                    raise ConfigException('Chunk sizes >1GB must be multiples of 1GB')
+                portions_per_chunk = chunk_size // GB
+                md5sum = None
+                for i, data in enumerate(chunked(handle, GB), 1):
+                    if md5sum is None:
+                        md5sum = hashlib.md5()
+                    md5sum.update(data)
+                    if i % portions_per_chunk == 0:
+                        md5s.append(md5sum)
+                        md5sum = None
+                else:
+                    # check to see if we have a pending md5sum
+                    # after the last iteration of the loop
+                    if md5sum is not None:
+                        md5s.append(md5sum)
 
         if len(md5s) == 1:
             return md5s[0].hexdigest()
         else:
-            digests = hashlib.md5(b''.join([m.digest() for m in md5s]))
+            digests = hashlib.md5(b''.join(m.digest() for m in md5s))
             return f'{digests.hexdigest()}-{len(md5s)}'
 
 

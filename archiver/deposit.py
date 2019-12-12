@@ -5,7 +5,8 @@ import sys
 
 from botocore.exceptions import ProfileNotFound
 
-from .batch import Batch, ConfigException
+from .batch import Batch
+from .exceptions import ConfigException
 
 
 def get_s3_client(profile_name):
