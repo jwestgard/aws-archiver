@@ -66,7 +66,7 @@ Many of the arguments listed above as "optional" are necessary for the load and 
 
 | option            | default       |
 |-------------------|---------------|
-| '-c', '--chunk'   | '5MB'         |
+| '-c', '--chunk'   | '4GB'         |
 | '-l', '--logs'    | 'logs'        |
 | '-n', '--name'    | 'test_batch'  |
 | '-p', '--profile' | 'default'     |
