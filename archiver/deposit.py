@@ -40,19 +40,20 @@ def deposit(args):
         sys.exit(1)
 
     # Display batch configuration information to the user
-    sys.stdout.write(f'Running deposit command with the following options:\n\n')
-    sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
-    sys.stdout.write(f'  - Local Rootdir: {batch.root}\n')
-    sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
     sys.stdout.write(
+        f'Running deposit command with the following options:\n\n'
+        f'  - Target Bucket: {batch.bucket}\n'
+        f'  - Local Rootdir: {batch.root}\n'
+        f'  - Storage Class: {batch.storage_class}\n'
         f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n'
-        )
-    sys.stdout.write(f'  - Use Threads: {batch.use_threads}\n')
-    sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n')
-    sys.stdout.write(f'  - AWS Profile: {args.profile}\n\n')
+        f'  - Use Threads: {batch.use_threads}\n'
+        f'  - Max Threads: {batch.max_threads}\n'
+        f'  - AWS Profile: {args.profile}\n\n'
+    )
 
     # Do the actual deposit to AWS
     batch.deposit(s3=get_s3_client(args.profile))
+    yield batch
 
 
 def batch_deposit(args):
@@ -80,3 +81,4 @@ def batch_deposit(args):
 
             print(batch.name)
             batch.deposit(s3=get_s3_client(args.profile))
+            yield batch
