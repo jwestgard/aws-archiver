@@ -54,7 +54,7 @@ def main():
                         '-c', '--chunk',
                         action='store',
                         help='Chunk size for multipart uploads',
-                        default='5MB'
+                        default='4GB'
     )
     deposit_parser.add_argument(
                         '-l', '--logs',
