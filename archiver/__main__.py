@@ -8,6 +8,7 @@ import sys
 
 from . import version, batch
 from .deposit import deposit, batch_deposit
+from .exceptions import FailureException
 
 
 STATS_FIELDS = (
@@ -145,12 +146,17 @@ def main():
         writer = csv.DictWriter(stats_file, fieldnames=STATS_FIELDS)
         if is_new:
             writer.writeheader()
-        for batch_obj in args.func(args):
-            writer.writerow(batch_obj.stats)
-            print()
-            print(f'Batch Name: {batch_obj.name}')
-            for key, value in batch_obj.stats.items():
-                print(f"    {key.replace('_', ' ').title()}: {value}")
+        try:
+            for batch_obj in args.func(args):
+                writer.writerow(batch_obj.stats)
+                print()
+                print(f'Batch Name: {batch_obj.name}')
+                for key, value in batch_obj.stats.items():
+                    print(f"    {key.replace('_', ' ').title()}: {value}")
+        except FailureException:
+            sys.exit(1)
+        except KeyboardInterrupt:
+            sys.exit(2)
 
 
 if __name__ == "__main__":
