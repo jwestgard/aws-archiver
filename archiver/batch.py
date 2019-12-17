@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import threading
+from datetime import datetime
 
 from boto3.exceptions import S3UploadFailedError
 from boto3.s3.transfer import TransferConfig
@@ -15,14 +16,16 @@ from .exceptions import ConfigException, PathOutOfScopeException
 class ProgressPercentage:
     """Display upload progress using callbacks."""
 
-    def __init__(self, asset):
+    def __init__(self, asset, batch):
         self.asset = asset
+        self.batch = batch
         self._seen_so_far = 0
         self._lock = threading.Lock()
 
     def __call__(self, bytes_amount):
         with self._lock:
             self._seen_so_far += bytes_amount
+            self.batch.stats['asset_bytes_transmitted'] += bytes_amount
             pct = (self._seen_so_far / self.asset.bytes) * 100
             sys.stdout.write(
                 f'\r  {self.asset.filename} -> ' +
@@ -82,6 +85,19 @@ class Batch:
             self.use_threads = True
 
         self.contents = []
+        self.stats = {
+            'total_assets': 0,
+            'assets_found': 0,
+            'assets_missing': 0,
+            'assets_ignored': 0,
+            'assets_transmitted': 0,
+            'asset_bytes_transmitted': 0,
+            'successful_deposits': 0,
+            'failed_deposits': 0,
+            'deposit_begin': '',
+            'deposit_end': '',
+            'deposit_time': 0
+        }
 
         # Read assets information from an md5sum-style listing
         if mapfile:
@@ -107,14 +123,21 @@ class Batch:
 
     def add_asset(self, path, md5=None):
         try:
+            self.stats['total_assets'] += 1
             asset = Asset(path, self.root, md5)
             self.contents.append(asset)
+            self.stats['assets_found'] += 1
         except FileNotFoundError as e:
+            self.stats['assets_missing'] += 1
             print(f'Skipping {path}: {e}', file=sys.stderr)
         except PathOutOfScopeException as e:
+            self.stats['assets_ignored'] += 1
             print(f'Skipping {path}: {e}', file=sys.stderr)
 
     def deposit(self, s3):
+        begin = datetime.now()
+        self.stats['deposit_begin'] = begin.isoformat()
+
         json_logfile_name = os.path.join(self.log_dir, self.name + '.json')
 
         if self.mapfile:
@@ -156,7 +179,8 @@ class Batch:
                 sys.stdout.write(f'    ETAG: {expected_etag}\n\n')
 
                 # Send the file, optionally in multipart, multithreaded mode
-                progress_tracker = ProgressPercentage(asset)
+                progress_tracker = ProgressPercentage(asset, self)
+                self.stats['assets_transmitted'] += 1
                 try:
                     s3.meta.client.upload_file(
                         asset.local_path,
@@ -167,6 +191,7 @@ class Batch:
                         Callback=progress_tracker
                     )
                 except S3UploadFailedError as e:
+                    self.stats['failed_deposits'] += 1
                     print(e, file=sys.stderr)
                     print('Continuing with the next asset', file=sys.stderr)
                     return
@@ -176,6 +201,7 @@ class Batch:
                 try:
                     response = s3.meta.client.head_object(Bucket=self.bucket, Key=key_path)
                 except ClientError as e:
+                    self.stats['failed_deposits'] += 1
                     print(f'Error verifying {self.bucket}/{key_path}: {e}', file=sys.stderr)
                     print('Continuing with the next asset', file=sys.stderr)
                     return
@@ -194,9 +220,11 @@ class Batch:
                 sys.stdout.write(f'    -> Local:  {expected_etag}\n')
                 sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
                 if remote_etag == expected_etag:
+                    self.stats['successful_deposits'] += 1
                     sys.stdout.write(f'  ETag match! Transfer success!\n')
                     result = 'success'
                 else:
+                    self.stats['failed_deposits'] += 1
                     sys.stdout.write(f'  Something went wrong.\n')
                     result = 'failed'
 
@@ -215,3 +243,7 @@ class Batch:
 
         if mapfile is not None:
             mapfile.close()
+
+        end = datetime.now()
+        self.stats['deposit_end'] = end.isoformat()
+        self.stats['deposit_time'] = (end - begin).total_seconds()

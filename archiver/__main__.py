@@ -2,10 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import csv
+import os
 import sys
 
 from . import version, batch
 from .deposit import deposit, batch_deposit
+from .exceptions import FailureException
+
+
+STATS_FIELDS = (
+    'total_assets', 'assets_found', 'assets_missing', 'assets_ignored', 'assets_transmitted', 'asset_bytes_transmitted',
+    'successful_deposits', 'failed_deposits', 'deposit_begin', 'deposit_end', 'deposit_time'
+)
 
 
 def print_header():
@@ -126,9 +135,28 @@ def main():
     batch_deposit_parser.set_defaults(func=batch_deposit)
 
     # parse the args and call the default sub-command function
+    # sub-command functions are expected to return a generator
+    # that yields a Batch object
     args = parser.parse_args()
     print_header()
-    args.func(args)
+    # TODO: configurable stats_filename
+    stats_filename = 'stats.csv'
+    is_new = not os.path.exists(stats_filename)
+    with open(stats_filename, 'a') as stats_file:
+        writer = csv.DictWriter(stats_file, fieldnames=STATS_FIELDS)
+        if is_new:
+            writer.writeheader()
+        try:
+            for batch_obj in args.func(args):
+                writer.writerow(batch_obj.stats)
+                print()
+                print(f'Batch Name: {batch_obj.name}')
+                for key, value in batch_obj.stats.items():
+                    print(f"    {key.replace('_', ' ').title()}: {value}")
+        except FailureException:
+            sys.exit(1)
+        except KeyboardInterrupt:
+            sys.exit(2)
 
 
 if __name__ == "__main__":

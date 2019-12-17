@@ -6,7 +6,7 @@ import sys
 from botocore.exceptions import ProfileNotFound
 
 from .batch import Batch
-from .exceptions import ConfigException
+from .exceptions import ConfigException, FailureException
 
 
 def get_s3_client(profile_name):
@@ -17,7 +17,7 @@ def get_s3_client(profile_name):
         session = boto3.session.Session(profile_name=profile_name)
     except ProfileNotFound as e:
         print(e, file=sys.stderr)
-        sys.exit(1)
+        raise FailureException from e
     return session.resource('s3')
 
 
@@ -37,25 +37,27 @@ def deposit(args):
         )
     except ConfigException as e:
         print(e, file=sys.stderr)
-        sys.exit(1)
+        raise FailureException from e
 
     # Display batch configuration information to the user
-    sys.stdout.write(f'Running deposit command with the following options:\n\n')
-    sys.stdout.write(f'  - Target Bucket: {batch.bucket}\n')
-    sys.stdout.write(f'  - Local Rootdir: {batch.root}\n')
-    sys.stdout.write(f'  - Storage Class: {batch.storage_class}\n')
     sys.stdout.write(
+        f'Running deposit command with the following options:\n\n'
+        f'  - Target Bucket: {batch.bucket}\n'
+        f'  - Local Rootdir: {batch.root}\n'
+        f'  - Storage Class: {batch.storage_class}\n'
         f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n'
-        )
-    sys.stdout.write(f'  - Use Threads: {batch.use_threads}\n')
-    sys.stdout.write(f'  - Max Threads: {batch.max_threads}\n')
-    sys.stdout.write(f'  - AWS Profile: {args.profile}\n\n')
+        f'  - Use Threads: {batch.use_threads}\n'
+        f'  - Max Threads: {batch.max_threads}\n'
+        f'  - AWS Profile: {args.profile}\n\n'
+    )
 
     # Do the actual deposit to AWS
     batch.deposit(s3=get_s3_client(args.profile))
+    yield batch
 
 
 def batch_deposit(args):
+    s3_client = get_s3_client(args.profile)
     batches_file = args.batches_file
     fields = ('path', 'name', 'bucket', 'mapfile', 'root', 'logs', 'chunk', 'storage', 'threads')
     with open(batches_file, 'r') as fh:
@@ -76,7 +78,8 @@ def batch_deposit(args):
                 )
             except ConfigException as e:
                 print(e, file=sys.stderr)
-                sys.exit(1)
+                raise FailureException from e
 
             print(batch.name)
-            batch.deposit(s3=get_s3_client(args.profile))
+            batch.deposit(s3=s3_client)
+            yield batch

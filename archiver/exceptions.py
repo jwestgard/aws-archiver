@@ -2,6 +2,10 @@ class ConfigException(Exception):
     pass
 
 
+class FailureException(Exception):
+    pass
+
+
 class PathOutOfScopeException(Exception):
     """
     Raised to indicate a local path falls outside the current batch root.
