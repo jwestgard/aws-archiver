@@ -1,85 +1,83 @@
-import boto3
 import csv
-import itertools
+import os
 import sys
 
-from botocore.exceptions import ProfileNotFound
+import yaml
 
-from .batch import Batch
+from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
-
-
-def get_s3_client(profile_name):
-    """
-    Set up a session with specified authentication profile.
-    """
-    try:
-        session = boto3.session.Session(profile_name=profile_name)
-    except ProfileNotFound as e:
-        print(e, file=sys.stderr)
-        raise FailureException from e
-    return session.resource('s3')
 
 
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
         batch = Batch(
+            path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
             name=args.name,
             bucket=args.bucket,
-            root=args.root,
-            chunk_size=args.chunk,
-            storage_class=args.storage,
-            max_threads=args.threads,
-            log_dir=args.logs,
-            mapfile=args.mapfile,
-            asset=args.asset
+            asset_root=args.root,
+            log_dir=args.logs
         )
+        if args.mapfile is not None:
+            batch.load_manifest(args.mapfile)
+        else:
+            batch.add_asset(args.asset)
+
     except ConfigException as e:
         print(e, file=sys.stderr)
         raise FailureException from e
 
-    # Display batch configuration information to the user
-    sys.stdout.write(
-        f'Running deposit command with the following options:\n\n'
-        f'  - Target Bucket: {batch.bucket}\n'
-        f'  - Local Rootdir: {batch.root}\n'
-        f'  - Storage Class: {batch.storage_class}\n'
-        f'  - Chunk Size: {args.chunk} ({batch.chunk_bytes} bytes)\n'
-        f'  - Use Threads: {batch.use_threads}\n'
-        f'  - Max Threads: {batch.max_threads}\n'
-        f'  - AWS Profile: {args.profile}\n\n'
+    # Do the actual deposit to AWS
+    batch.deposit(
+        profile_name=args.profile,
+        chunk_size=args.chunk,
+        storage_class=args.storage,
+        max_threads=args.threads
     )
 
-    # Do the actual deposit to AWS
-    batch.deposit(s3=get_s3_client(args.profile))
-    yield batch
+
+STATS_FIELDS = (
+    'batch_name',
+    'total_assets', 'assets_found', 'assets_missing', 'assets_ignored', 'assets_transmitted', 'asset_bytes_transmitted',
+    'successful_deposits', 'failed_deposits', 'deposit_begin', 'deposit_end', 'deposit_time'
+)
 
 
 def batch_deposit(args):
-    s3_client = get_s3_client(args.profile)
-    batches_file = args.batches_file
-    fields = ('path', 'name', 'bucket', 'mapfile', 'root', 'logs', 'chunk', 'storage', 'threads')
-    with open(batches_file, 'r') as fh:
-        reader = csv.DictReader(itertools.islice(fh, 1, None), fieldnames=fields)
-        for line in reader:
-            # replace empty strings with None for easier handling by the Batch constructor
-            line = {key: value if value != '' else None for key, value in line.items()}
+    batches_filename = args.batches_file
+    with open(batches_filename, 'r') as batches_file:
+        batch_configs = yaml.safe_load(batches_file)
+    batches_dir = batch_configs['batches_dir'] or os.path.curdir()
+
+    stats_filename = os.path.join(os.path.dirname(batches_filename), 'stats.csv')
+    stats_file_is_new = not os.path.exists(stats_filename)
+    with open(stats_filename, 'a') as stats_file:
+        writer = csv.DictWriter(stats_file, fieldnames=STATS_FIELDS)
+        if stats_file_is_new:
+            writer.writeheader()
+
+        for config in batch_configs['batches']:
             try:
                 batch = Batch(
-                    name=line['name'],
-                    bucket=line['bucket'],
-                    root=line['root'],
-                    chunk_size=line['chunk'],
-                    storage_class=line['storage'],
-                    max_threads=line['threads'],
-                    log_dir=line['logs'],
-                    mapfile=line['mapfile']
+                    path=os.path.join(batches_dir, config.get('path')),
+                    bucket=config.get('bucket'),
+                    asset_root=config.get('asset_root'),
+                    name=config.get('name'),
+                    log_dir=config.get('logs')
                 )
+                batch.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME))
             except ConfigException as e:
                 print(e, file=sys.stderr)
                 raise FailureException from e
 
-            print(batch.name)
-            batch.deposit(s3=s3_client)
-            yield batch
+            print()
+            print(f'Batch: {batch.name}')
+            batch.deposit(
+                profile_name=args.profile,
+                chunk_size=config.get('chunk_size'),
+                storage_class=config.get('storage_class'),
+                max_threads=config.get('max_threads')
+            )
+            writer.writerow(batch.stats)
+            for key, value in batch.stats.items():
+                print(f"    {key.replace('_', ' ').title()}: {value}")

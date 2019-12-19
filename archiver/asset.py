@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 
 from .exceptions import ConfigException, PathOutOfScopeException
 
@@ -21,8 +22,10 @@ class Asset:
         self.directory  = os.path.dirname(self.local_path)
         self.bytes      = os.path.getsize(self.local_path)
         self.extension  = os.path.splitext(self.filename)[1].lstrip('.').upper()
-        if self.local_path.startswith(batch_root):
-            self.relpath = self.local_path[len(batch_root):]
+        batch_root_pattern = re.compile('(' + batch_root + ')')
+        match = batch_root_pattern.match(self.local_path)
+        if match:
+            self.relpath = self.local_path[len(match[1]):]
         else:
             raise PathOutOfScopeException(path=self.local_path, base_path=batch_root)
 
