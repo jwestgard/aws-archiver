@@ -41,6 +41,8 @@ STATS_FIELDS = (
     'total_assets', 'assets_found', 'assets_missing', 'assets_ignored', 'assets_transmitted', 'asset_bytes_transmitted',
     'successful_deposits', 'failed_deposits', 'deposit_begin', 'deposit_end', 'deposit_time'
 )
+# symbolic constant for use with open()
+LINE_BUFFERING = 1
 
 
 def batch_deposit(args):
@@ -51,7 +53,7 @@ def batch_deposit(args):
 
     stats_filename = os.path.join(os.path.dirname(batches_filename), 'stats.csv')
     stats_file_is_new = not os.path.exists(stats_filename)
-    with open(stats_filename, 'a') as stats_file:
+    with open(stats_filename, mode='a', buffering=LINE_BUFFERING) as stats_file:
         writer = csv.DictWriter(stats_file, fieldnames=STATS_FIELDS)
         if stats_file_is_new:
             writer.writeheader()
