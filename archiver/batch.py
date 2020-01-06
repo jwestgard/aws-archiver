@@ -90,6 +90,7 @@ class Batch:
         if not os.path.isdir(self.log_dir):
             os.mkdir(self.log_dir)
 
+        self.results_filename = os.path.join(self.log_dir, 'results.csv')
         self.manifest_filename = None
         self.contents = []
 
@@ -110,12 +111,20 @@ class Batch:
 
     # Read assets information from an md5sum-style listing
     def load_manifest(self, manifest):
+        if os.path.isfile(self.results_filename):
+            with open(self.results_filename, 'r') as results_file:
+                results = csv.DictReader(results_file)
+                completed = set((row.get('md5'), row.get('local_path')) for row in results)
+        else:
+            completed = set()
+
         self.manifest_filename = os.path.join(self.path, manifest)
         with open(self.manifest_filename) as manifest_file:
             for line in manifest_file:
                 # using None as delimiter splits on any whitespace
                 md5, path = line.strip().split(None, 1)
-                self.add_asset(path, md5)
+                if (md5, path) not in completed:
+                    self.add_asset(path, md5)
 
     def add_asset(self, path, md5=None):
         try:
@@ -164,10 +173,12 @@ class Batch:
         self.stats['deposit_begin'] = begin.isoformat()
 
         if self.manifest_filename:
-            results_file = open(os.path.join(self.log_dir, 'results.csv'), 'w')
-            fieldnames = ['id', 'relpath', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result']
+            results_file_exists = os.path.exists(self.results_filename)
+            results_file = open(self.results_filename, 'a')
+            fieldnames = ['id', 'local_path', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result']
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
-            writer.writeheader()
+            if not results_file_exists:
+                writer.writeheader()
         else:
             results_file = None
             writer = None
@@ -254,7 +265,7 @@ class Batch:
 
                 row = {
                     'id': n,
-                    'relpath': asset.relpath,
+                    'local_path': asset.local_path,
                     'filename': asset.filename,
                     'md5': asset.md5,
                     'bytes': asset.bytes,
