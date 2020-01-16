@@ -121,10 +121,13 @@ class Batch:
         self.manifest_filename = os.path.join(self.path, manifest)
         with open(self.manifest_filename) as manifest_file:
             for line in manifest_file:
-                # using None as delimiter splits on any whitespace
-                md5, path = line.strip().split(None, 1)
-                if (md5, path) not in completed:
-                    self.add_asset(path, md5)
+                if line is '':
+                    continue
+                else:
+                    # using None as delimiter splits on any whitespace
+                    md5, path = line.strip().split(None, 1)
+                    if (md5, path) not in completed:
+                        self.add_asset(path, md5)
 
     def add_asset(self, path, md5=None):
         try:
