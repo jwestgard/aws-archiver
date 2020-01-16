@@ -12,9 +12,10 @@ $ cd aws-archiver && pip install -e .
 ```
 
 ## Usage
-The tool is still under development. Currently, there are two primary modes of making deposits: 
+The tool is still under development. Currently, there are three modes of making deposits: 
   1. as a single asset specified by the ```-a ASSET``` option; or 
-  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` option.
+  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` option; or
+  3. as a collection of batches using the ```batch-deposit``` subcommand.
 
 For details on format and creation of batch manifests, see the following section.
 
@@ -61,6 +62,16 @@ optional arguments:
   -t THREADS, --threads THREADS  Maximum number of concurrent threads
 ```
 
+### Batch deposit summary
+```
+usage: archiver batch-deposit [-h] -f BATCHES_FILE [-p PROFILE]
+
+optional arguments:
+  -h, --help                        show this help message and exit
+  -f BATCHES_FILE, --batches-file   BATCHES_FILE
+  -p PROFILE, --profile PROFILE     AWS authorization profile
+```
+
 ### Default option values
 Many of the arguments listed above as "optional" are necessary for the load and therefore have the following default values:
 
@@ -73,9 +84,3 @@ Many of the arguments listed above as "optional" are necessary for the load and 
 | '-r', '--root'    | '.'           |
 | '-s', '--storage' | 'DEEP_ARCHIVE'|
 | '-t', '--threads' | 10            |
-  
-## Known issues
-This relative path caluclulation problem has now been described in [issue #3](https://github.com/jwestgard/aws-archiver/issues/3).
-
-## Development roadmap
-To facilitate loading large quantities of assets (i.e. multiple batches), a "batch of batches" mode will be added. This will provide the ability to define a set of batches in a CSV file containing the path to each batch manifest file as well as the values to use for each batch's options.
