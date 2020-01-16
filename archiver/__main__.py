@@ -67,6 +67,11 @@ def main():
         default=batch.DEFAULT_CHUNK_SIZE
     )
     deposit_parser.add_argument(
+        '-f', '--flatten',
+        action='store_true',
+        help='Discard relative path in keypath'
+    )
+    deposit_parser.add_argument(
         '-l', '--logs',
         action='store',
         help='Location to store log files',

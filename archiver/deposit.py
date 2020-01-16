@@ -16,9 +16,12 @@ def deposit(args):
             name=args.name,
             bucket=args.bucket,
             asset_root=args.root,
-            log_dir=args.logs
+            log_dir=args.logs,
+            flatten=args.flatten
         )
         if args.mapfile is not None:
+            if batch.filename_collision(args.mapfile):
+                raise ConfigException(f'Error: {batch.name} contains duplicate filenames.')
             batch.load_manifest(args.mapfile)
         else:
             batch.add_asset(args.asset)
@@ -65,7 +68,8 @@ def batch_deposit(args):
                     bucket=config.get('bucket'),
                     asset_root=config.get('asset_root'),
                     name=config.get('name'),
-                    log_dir=config.get('logs')
+                    log_dir=config.get('logs'),
+                    flatten=config.get('flatten')
                 )
                 batch.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME))
             except ConfigException as e:

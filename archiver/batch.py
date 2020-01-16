@@ -72,7 +72,7 @@ class Batch:
     and an AWS configuration where they will be archived.
     """
 
-    def __init__(self, path, bucket, asset_root, name=None, log_dir=None):
+    def __init__(self, path, bucket, asset_root, name=None, log_dir=None, flatten=False):
         """
         Set up a batch of assets to be loaded. Any assets whose local paths don't exist are omitted from the batch.
         """
@@ -93,6 +93,7 @@ class Batch:
         self.results_filename = os.path.join(self.log_dir, 'results.csv')
         self.manifest_filename = None
         self.contents = []
+        self.flatten = flatten
 
         self.stats = {
             'batch_name': self.name,
@@ -128,6 +129,20 @@ class Batch:
                     md5, path = line.strip().split(None, 1)
                     if (md5, path) not in completed:
                         self.add_asset(path, md5)
+
+    def filename_collision(self, manifest):
+        """Check for uniqueness of filenames in manifest"""
+        all_filenames = set()
+        self.manifest_filename = os.path.join(self.path, manifest)
+        with open(self.manifest_filename) as manifest_file:
+            for line in manifest_file:
+                if line is not '':
+                    filename = os.path.basename(line.strip().split(None, 1)[1])
+                    if filename in all_filenames:
+                        return True
+                    else:
+                        all_filenames.add(filename)
+        return False
 
     def add_asset(self, path, md5=None):
         try:
@@ -169,7 +184,8 @@ class Batch:
             f'  - Chunk Size: {chunk_size} ({chunk_bytes} bytes)\n'
             f'  - Use Threads: {use_threads}\n'
             f'  - Max Threads: {max_threads}\n'
-            f'  - AWS Profile: {profile_name}\n\n'
+            f'  - AWS Profile: {profile_name}\n'
+            f'  - Flatten: {self.flatten}\n\n'
         )
 
         begin = datetime.now()
