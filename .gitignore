@@ -108,3 +108,6 @@ venv.bak/
 thumbs.db
 logs/
 
+# IDE-specific ignores
+.idea
+
