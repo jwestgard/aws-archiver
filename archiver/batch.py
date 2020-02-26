@@ -255,7 +255,7 @@ class Batch:
         if self.manifest_filename:
             results_file_exists = os.path.exists(self.results_filename)
             results_file = open(self.results_filename, 'a')
-            fieldnames = ['id', 'local_path', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result']
+            fieldnames = ['id', 'filepath', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result', 'storagepath']
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
             if not results_file_exists:
                 writer.writeheader()
@@ -345,13 +345,14 @@ class Batch:
 
                 row = {
                     'id': n,
-                    'local_path': asset.local_path,
+                    'filepath': asset.local_path,
                     'filename': asset.filename,
                     'md5': asset.md5,
                     'bytes': asset.bytes,
                     'keypath': key_path,
                     'etag': remote_etag,
-                    'result': result
+                    'result': result,
+                    'storagepath': f'{self.bucket}/{key_path}'
                 }
                 if writer is not None:
                     writer.writerow(row)
