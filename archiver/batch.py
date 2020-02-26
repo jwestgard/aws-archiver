@@ -10,6 +10,8 @@ from boto3.exceptions import S3UploadFailedError
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError, ProfileNotFound
 
+from enum import Enum, unique
+
 from .asset import Asset
 from .exceptions import ConfigException, PathOutOfScopeException, FailureException
 
@@ -66,6 +68,15 @@ DEFAULT_LOG_DIR = 'logs'
 DEFAULT_MANIFEST_FILENAME = 'manifest.txt'
 
 
+@unique
+class ManifestFileType(Enum):
+    """
+    Enumeration of manifest file types
+    """
+    MD5_SUM = 1
+    PATSY_DB = 2
+
+
 class Batch:
     """
     Class representing a set of resources to be archived,
@@ -119,7 +130,36 @@ class Batch:
             completed = set()
 
         self.manifest_filename = os.path.join(self.path, manifest)
-        with open(self.manifest_filename) as manifest_file:
+        self.load_manifest_file(self.manifest_filename, completed)
+
+    def load_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, skipping
+        any entries that are in the "completed" set.
+
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        # Determine type of manifest file
+        manifest_file_type = Batch.manifest_file_type(manifest_filename)
+
+        if manifest_file_type == ManifestFileType.MD5_SUM:
+            self.load_md5sum_manifest_file(manifest_filename, completed)
+        else:
+            self.load_patsy_manifest_file(manifest_filename, completed)
+
+    def load_md5sum_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, which is assumed to
+        be in the "md5sum" format, skipping any entries that are in the
+        "completed" set.
+
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        with open(manifest_filename) as manifest_file:
             for line in manifest_file:
                 if line is '':
                     continue
@@ -129,10 +169,47 @@ class Batch:
                     if (md5, path) not in completed:
                         self.add_asset(path, md5)
 
-    def add_asset(self, path, md5=None):
+    def load_patsy_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, which is assumed to
+        be in the "patsy-db" format, skipping any entries that are in the
+        "completed" set.
+
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        with open(manifest_filename) as manifest_file:
+            reader = csv.DictReader(manifest_file, delimiter=',')
+            for row in reader:
+                md5 = row['md5']
+                path = row['filepath']
+                relpath = row['relpath']
+                if (md5, path) not in completed:
+                    self.add_asset(path, md5, relpath=relpath)
+
+    @staticmethod
+    def manifest_file_type(manifest_filename):
+        """
+        Returns the ManifestFileType indicating which type of manifest
+        the given file is.
+
+        :param manifest_filename: the filepath to the manifest file
+        :return: a ManifestFileType indicating the type of manifest
+        """
+        with open(manifest_filename) as manifest_file:
+            # Read the first line
+            line = manifest_file.readline().strip()
+
+            if line == "md5,filepath,relpath":
+                return ManifestFileType.PATSY_DB
+
+        return ManifestFileType.MD5_SUM
+
+    def add_asset(self, path, md5=None, relpath=None):
         try:
             self.stats['total_assets'] += 1
-            asset = Asset(path, self.asset_root, md5)
+            asset = Asset(path, self.asset_root, md5, relpath=relpath)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:

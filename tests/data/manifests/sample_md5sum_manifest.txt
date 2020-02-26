@@ -1,0 +1,5 @@
+88b29e5ef988292eceda767cdb117f22	/libr/archives/paperexport/Historic Maryland Newspaper Project - batch_mdu_alvarez Date 9222015/Newspaper/Archive/batch_mdu_alvarez/BATCH.xml
+2c42c4ca209a913c4374ae624ce7d30b	/libr/archives/paperexport/Historic Maryland Newspaper Project - batch_mdu_alvarez Date 9222015/Newspaper/Archive/batch_mdu_alvarez/BATCH_1.xml
+cf66792f72daca2959632f9e150e40c7	/libr/archives/paperexport/Historic Maryland Newspaper Project - batch_mdu_alvarez Date 9222015/Newspaper/Archive/batch_mdu_alvarez/sn84026688/00296029956/0001.jp2
+de28e169a5a708541cc15297180a5e2b	/libr/archives/paperexport/Historic Maryland Newspaper Project - batch_mdu_alvarez Date 9222015/Newspaper/Archive/batch_mdu_alvarez/sn84026688/00296029956/0001.pdf
+f28091705c679023fb0f6d9611f86d32	/libr/archives/paperexport/Historic Maryland Newspaper Project - batch_mdu_alvarez Date 9222015/Newspaper/Archive/batch_mdu_alvarez/sn84026688/00296029956/0001.tif
