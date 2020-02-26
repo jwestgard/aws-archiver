@@ -1,36 +1,59 @@
 # aws-archiver
+
 Command-line preservation archiving tool for S3
 
 ## Purpose
-The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3 storage while ensuring end-to-end asset fixity and the creation of auditable deposit records.
+
+The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3
+storage while ensuring end-to-end asset fixity and the creation of auditable
+deposit records.
 
 ## Installation
+
 To install the tool for system-wide access, the recommended method is via pip:
+
 ```
 $ git clone https://www.github.com/jwestgard/aws-archiver
 $ cd aws-archiver && pip install -e .
 ```
 
 ## Usage
-The tool is still under development. Currently, there are three modes of making deposits: 
+
+The tool is still under development. Currently, there are three modes of making
+deposits: 
+
   1. as a single asset specified by the ```-a ASSET``` option; or 
-  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` option; or
+  2. as a batch defined in a manifest file specified by the ```-m MAPFILE```
+     option; or
   3. as a collection of batches using the ```batch-deposit``` subcommand.
 
 For details on format and creation of batch manifests, see the following section.
 
 ### Batch manifest file
-Collections of files are loaded using a manifest file. The format of the manifest is a text file listing one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the Unix ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repository's ```bin``` directory.
+
+Collections of files are loaded using a manifest file. The format of the
+manifest is a text file listing one asset per line, in the form
+```<md5 hash> <whitespace> <absolute local path>```. This is the same line
+format as the output of the Unix ```md5sum``` utility.  As a convenience, a
+script to generate the latter from a directory of files is included in this
+repository's ```bin``` directory.
 
 To create a batch manifest with the included script, do:
+
 ```
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
 ### AWS credentials
-AWS credentials are required for making deposits. This tool uses the boto3 library to manage authorization using AWS authentication profiles. These profiles are stored in ```~/.aws/credentials```. To choose a profile to use with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool will default to the default profile. The chosen profile must have write permission for the bucket specified in the ```-b BUCKET``` option.
+AWS credentials are required for making deposits. This tool uses the boto3
+library to manage authorization using AWS authentication profiles. These
+profiles are stored in ```~/.aws/credentials```. To choose a profile to use
+with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool
+will default to the default profile. The chosen profile must have write
+permission for the bucket specified in the ```-b BUCKET``` option.
 
 ### Summary of options
+
 ```
 S3 preservation archiver
 
@@ -63,6 +86,7 @@ optional arguments:
 ```
 
 ### Batch deposit summary
+
 ```
 usage: archiver batch-deposit [-h] -f BATCHES_FILE [-p PROFILE]
 
@@ -73,7 +97,9 @@ optional arguments:
 ```
 
 ### Default option values
-Many of the arguments listed above as "optional" are necessary for the load and therefore have the following default values:
+
+Many of the arguments listed above as "optional" are necessary for the load and
+therefore have the following default values:
 
 | option            | default       |
 |-------------------|---------------|
