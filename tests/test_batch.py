@@ -8,13 +8,13 @@ class TestBatch(unittest.TestCase):
         pass
 
     def test_load_md5sum_manifest(self):
-        batch = Batch(path='tests/data/manifests', bucket='test_bucket', asset_root='/', log_dir='/tmp')
+        batch = Batch(manifest_path='tests/data/manifests', bucket='test_bucket', asset_root='/', log_dir='/tmp')
         batch.load_manifest('sample_md5sum_manifest.txt')
         self.assertEqual(5, batch.stats['total_assets'])
         self.assertEqual(5, batch.stats['assets_missing'])
 
     def test_load_patsy_manifest(self):
-        batch = Batch(path='tests/data/manifests', bucket='test_bucket', asset_root='/', log_dir='/tmp')
+        batch = Batch(manifest_path='tests/data/manifests', bucket='test_bucket', asset_root='/', log_dir='/tmp')
         batch.load_manifest('sample_patsy_manifest.csv')
         self.assertEqual(5, batch.stats['total_assets'])
         self.assertEqual(5, batch.stats['assets_missing'])
@@ -29,7 +29,7 @@ class TestBatch(unittest.TestCase):
     def test_add_asset_without_specified_relpath(self):
         sample_file_1_path = os.path.abspath('tests/data/files/sample_file_1.txt')
         asset_root = os.path.abspath('.')
-        batch = Batch(path=sample_file_1_path, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
+        batch = Batch(manifest_path=sample_file_1_path, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
 
         batch.add_asset(sample_file_1_path)
 
@@ -41,7 +41,7 @@ class TestBatch(unittest.TestCase):
     def test_add_asset_with_specified_relpath(self):
         sample_file_1_path = os.path.abspath('tests/data/files/sample_file_1.txt')
         asset_root = os.path.abspath('.')
-        batch = Batch(path=sample_file_1_path, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
+        batch = Batch(manifest_path=sample_file_1_path, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
 
         batch.add_asset(sample_file_1_path, relpath='test/specific/relpath/sample_file_1.txt')
 

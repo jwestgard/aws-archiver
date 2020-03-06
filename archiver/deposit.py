@@ -12,7 +12,7 @@ def deposit(args):
     """Deposit a set of files into AWS."""
     try:
         batch = Batch(
-            path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
+            manifest_path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
             name=args.name,
             bucket=args.bucket,
             asset_root=args.root,
@@ -61,7 +61,7 @@ def batch_deposit(args):
         for config in batch_configs['batches']:
             try:
                 batch = Batch(
-                    path=os.path.join(batches_dir, config.get('path')),
+                    manifest_path=os.path.join(batches_dir, config.get('path')),
                     bucket=config.get('bucket'),
                     asset_root=config.get('asset_root'),
                     name=config.get('name'),
