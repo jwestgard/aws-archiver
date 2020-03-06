@@ -14,7 +14,7 @@ from enum import Enum, unique
 
 from .asset import Asset
 from .exceptions import ConfigException, PathOutOfScopeException, FailureException
-
+from .utils import calculate_relative_path
 
 def get_s3_client(profile_name):
     """
@@ -93,9 +93,13 @@ class Batch:
         else:
             self.name = os.path.basename(self.path)
         self.bucket = bucket
-        self.asset_root = os.path.abspath(asset_root)
-        if not self.asset_root.endswith('/'):
-            self.asset_root += '/'
+
+        if asset_root is None:
+            self.asset_root = None
+        else:
+            self.asset_root = os.path.abspath(asset_root)
+            if not self.asset_root.endswith('/'):
+                self.asset_root += '/'
 
         self.log_dir = os.path.join(self.path, log_dir if log_dir is not None else DEFAULT_LOG_DIR)
         if not os.path.isdir(self.log_dir):
@@ -209,7 +213,10 @@ class Batch:
     def add_asset(self, path, md5=None, relpath=None):
         try:
             self.stats['total_assets'] += 1
-            asset = Asset(path, self.asset_root, md5, relpath=relpath)
+            if (self.asset_root is not None) and (relpath is None):
+                relpath = calculate_relative_path(self.asset_root, path)
+
+            asset = Asset(path, md5, relpath=relpath)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
