@@ -1,8 +1,7 @@
 import hashlib
 import os
-import re
-
-from .exceptions import ConfigException, PathOutOfScopeException
+from .exceptions import ConfigException
+from .utils import calculate_relative_path
 
 GB = 1024 ** 3
 
@@ -12,7 +11,7 @@ class Asset:
     Class representing a binary resource to be archived.
     """
 
-    def __init__(self, path, batch_root, md5=None, relpath=None):
+    def __init__(self, path, md5=None, relpath=None):
         self.local_path = path
         self.md5        = md5 or self.calculate_md5()
         self.filename   = os.path.basename(self.local_path)
@@ -20,34 +19,7 @@ class Asset:
         self.directory  = os.path.dirname(self.local_path)
         self.bytes      = os.path.getsize(self.local_path)
         self.extension  = os.path.splitext(self.filename)[1].lstrip('.').upper()
-
-        if relpath:
-            self.relpath = relpath
-        else:
-            self.relpath = Asset.calculate_relative_path(batch_root, self.local_path)
-
-    @staticmethod
-    def calculate_relative_path(batch_root, local_path):
-        """
-        Returns the relative path, i.e., the given local_path with the
-        given batch_root prefix removed.
-
-        :param batch_root: the path prefix to remove from the local path
-        :param local_path: the local path to the file
-        :return: the path relative to the batch_root
-        :raises: PathOutOfScopeException if the given local_path does not match
-                 the given batch_root
-        """
-        if not batch_root.endswith('/'):
-            batch_root += '/'
-
-        batch_root_pattern = re.compile('(' + batch_root + ')')
-
-        match = batch_root_pattern.match(local_path)
-        if match:
-            return local_path[len(match[1]):]
-        else:
-            raise PathOutOfScopeException(path=local_path, base_path=batch_root)
+        self.relpath = relpath
 
     def calculate_md5(self):
         """
