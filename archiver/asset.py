@@ -37,6 +37,12 @@ class Asset:
         the specified chunk size, the hash of all the chunk hashes concatenated
         together, followed by the number of chunks.
         """
+        file_size = os.path.getsize(self.local_path)
+        if file_size == 0:
+            # Special handling for zero byte files, just return the MD5 sum of
+            # an empty string
+            return hashlib.md5(b'').hexdigest()
+
         md5s = []
         with open(self.local_path, 'rb') as handle:
             if chunk_size < GB:
