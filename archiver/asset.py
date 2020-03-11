@@ -38,10 +38,20 @@ class Asset:
         together, followed by the number of chunks.
         """
         file_size = os.path.getsize(self.local_path)
+
         if file_size == 0:
             # Special handling for zero byte files, just return the MD5 sum of
             # an empty string
             return hashlib.md5(b'').hexdigest()
+
+        # Min unchunked file_size is the smaller of chunk_size and GB
+        min_unchunked_file_size = min(chunk_size, GB)
+
+        # For files that are small enough not to be chunked, simply return
+        # the asset MD5
+        use_asset_md5 = (file_size < min_unchunked_file_size) and self.md5
+        if use_asset_md5:
+            return self.md5
 
         md5s = []
         with open(self.local_path, 'rb') as handle:
