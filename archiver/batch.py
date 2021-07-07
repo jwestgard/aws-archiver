@@ -5,12 +5,27 @@ import sys
 import threading
 from datetime import datetime
 
+import boto3
 from boto3.exceptions import S3UploadFailedError
 from boto3.s3.transfer import TransferConfig
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ProfileNotFound
+
+from enum import Enum, unique
 
 from .asset import Asset
-from .exceptions import ConfigException, PathOutOfScopeException
+from .exceptions import ConfigException, PathOutOfScopeException, FailureException
+from .utils import calculate_relative_path
+
+def get_s3_client(profile_name):
+    """
+    Set up a session with specified authentication profile.
+    """
+    try:
+        session = boto3.session.Session(profile_name=profile_name)
+    except ProfileNotFound as e:
+        print(e, file=sys.stderr)
+        raise FailureException from e
+    return session.resource('s3').meta.client
 
 
 class ProgressPercentage:
@@ -50,6 +65,16 @@ DEFAULT_CHUNK_SIZE = '4GB'
 DEFAULT_STORAGE_CLASS = 'DEEP_ARCHIVE'
 DEFAULT_MAX_THREADS = 10
 DEFAULT_LOG_DIR = 'logs'
+DEFAULT_MANIFEST_FILENAME = 'manifest.txt'
+
+
+@unique
+class ManifestFileType(Enum):
+    """
+    Enumeration of manifest file types
+    """
+    MD5_SUM = 1
+    PATSY_DB = 2
 
 
 class Batch:
@@ -58,34 +83,34 @@ class Batch:
     and an AWS configuration where they will be archived.
     """
 
-    def __init__(
-            self, name, bucket, root='.', log_dir=None,
-            chunk_size=None, storage_class=None, max_threads=None,
-            mapfile=None, asset=None
-    ):
+    def __init__(self, manifest_path, bucket, asset_root, name=None, log_dir=None):
         """
         Set up a batch of assets to be loaded. Any assets whose local paths don't exist are omitted from the batch.
         """
-        self.name = name
-        self.chunk_bytes = calculate_chunk_bytes(chunk_size if chunk_size is not None else DEFAULT_CHUNK_SIZE)
+        self.manifest_path = manifest_path
+        if name is not None:
+            self.name = name
+        else:
+            self.name = os.path.basename(self.manifest_path)
         self.bucket = bucket
-        self.root = os.path.abspath(root)
-        if not self.root.endswith('/'):
-            self.root += '/'
-        self.storage_class = storage_class if storage_class is not None else DEFAULT_STORAGE_CLASS
 
-        self.log_dir = log_dir if log_dir is not None else DEFAULT_LOG_DIR
+        if asset_root is None:
+            self.asset_root = None
+        else:
+            self.asset_root = os.path.abspath(asset_root)
+            if not self.asset_root.endswith('/'):
+                self.asset_root += '/'
+
+        self.log_dir = os.path.join(self.manifest_path, log_dir if log_dir is not None else DEFAULT_LOG_DIR)
         if not os.path.isdir(self.log_dir):
             os.mkdir(self.log_dir)
 
-        self.max_threads = int(max_threads if max_threads is not None else DEFAULT_MAX_THREADS)
-        if self.max_threads == 1:
-            self.use_threads = False
-        else:
-            self.use_threads = True
-
+        self.results_filename = os.path.join(self.log_dir, 'results.csv')
+        self.manifest_filename = None
         self.contents = []
+
         self.stats = {
+            'batch_name': self.name,
             'total_assets': 0,
             'assets_found': 0,
             'assets_missing': 0,
@@ -99,32 +124,99 @@ class Batch:
             'deposit_time': 0
         }
 
-        # Read assets information from an md5sum-style listing
-        if mapfile:
-            self.mapfile = mapfile
-            with open(mapfile) as handle:
-                for line in handle:
+    # Read assets information from an md5sum-style listing
+    def load_manifest(self, manifest):
+        if os.path.isfile(self.results_filename):
+            with open(self.results_filename, 'r') as results_file:
+                results = csv.DictReader(results_file)
+                completed = set((row.get('md5'), row.get('local_path')) for row in results)
+        else:
+            completed = set()
+
+        self.manifest_filename = os.path.join(self.manifest_path, manifest)
+        self.load_manifest_file(self.manifest_filename, completed)
+
+    def load_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, skipping
+        any entries that are in the "completed" set.
+
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        # Determine type of manifest file
+        manifest_file_type = Batch.manifest_file_type(manifest_filename)
+
+        if manifest_file_type == ManifestFileType.MD5_SUM:
+            self.load_md5sum_manifest_file(manifest_filename, completed)
+        else:
+            self.load_patsy_manifest_file(manifest_filename, completed)
+
+    def load_md5sum_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, which is assumed to
+        be in the "md5sum" format, skipping any entries that are in the
+        "completed" set.
+
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        with open(manifest_filename) as manifest_file:
+            for line in manifest_file:
+                if line is '':
+                    continue
+                else:
                     # using None as delimiter splits on any whitespace
                     md5, path = line.strip().split(None, 1)
-                    self.add_asset(path, md5)
+                    if (md5, path) not in completed:
+                        self.add_asset(path, md5)
 
-        # Otherwise process a single asset path passed as an argument
-        else:
-            self.mapfile = None
-            self.add_asset(asset)
+    def load_patsy_manifest_file(self, manifest_filename, completed):
+        """
+        Adds all the assets in the given manifest_filename, which is assumed to
+        be in the "patsy-db" format, skipping any entries that are in the
+        "completed" set.
 
-        # Set up the AWS transfer configuration for the batch
-        self.aws_config = TransferConfig(
-            multipart_threshold=self.chunk_bytes,
-            max_concurrency=self.max_threads,
-            multipart_chunksize=self.chunk_bytes,
-            use_threads=self.use_threads
-        )
+        :param manifest_filename: the filepath to the manifest file
+        :param completed: the set of md5 and local_path entries that have been
+                          already uploaded
+        """
+        with open(manifest_filename) as manifest_file:
+            reader = csv.DictReader(manifest_file, delimiter=',')
+            for row in reader:
+                md5 = row['md5']
+                path = row['filepath']
+                relpath = row['relpath']
+                if (md5, path) not in completed:
+                    self.add_asset(path, md5, relpath=relpath)
 
-    def add_asset(self, path, md5=None):
+    @staticmethod
+    def manifest_file_type(manifest_filename):
+        """
+        Returns the ManifestFileType indicating which type of manifest
+        the given file is.
+
+        :param manifest_filename: the filepath to the manifest file
+        :return: a ManifestFileType indicating the type of manifest
+        """
+        with open(manifest_filename) as manifest_file:
+            # Read the first line
+            line = manifest_file.readline().strip()
+
+            if line == "md5,filepath,relpath":
+                return ManifestFileType.PATSY_DB
+
+        return ManifestFileType.MD5_SUM
+
+    def add_asset(self, path, md5=None, relpath=None):
         try:
             self.stats['total_assets'] += 1
-            asset = Asset(path, self.root, md5)
+            if (self.asset_root is not None) and (relpath is None):
+                relpath = calculate_relative_path(self.asset_root, path)
+
+            asset = Asset(path, md5, relpath=relpath)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
@@ -134,34 +226,62 @@ class Batch:
             self.stats['assets_ignored'] += 1
             print(f'Skipping {path}: {e}', file=sys.stderr)
 
-    def deposit(self, s3):
+    def deposit(self, profile_name, chunk_size=None, storage_class=None, max_threads=None):
+        s3_client = get_s3_client(profile_name)
+
+        if chunk_size is None:
+            chunk_size = DEFAULT_CHUNK_SIZE
+        chunk_bytes = calculate_chunk_bytes(chunk_size)
+        storage_class = storage_class if storage_class is not None else DEFAULT_STORAGE_CLASS
+        max_threads = int(max_threads if max_threads is not None else DEFAULT_MAX_THREADS)
+        use_threads = (max_threads > 1)
+
+        # Set up the AWS transfer configuration for the deposit
+        aws_config = TransferConfig(
+            multipart_threshold=chunk_bytes,
+            max_concurrency=max_threads,
+            multipart_chunksize=chunk_bytes,
+            use_threads=use_threads
+        )
+
+        # Display batch configuration information to the user
+        sys.stdout.write(
+            f'Running deposit command with the following options:\n\n'
+            f'  - Target Bucket: {self.bucket}\n'
+            f'  - Local Asset Root: {self.asset_root}\n'
+            f'  - Storage Class: {storage_class}\n'
+            f'  - Chunk Size: {chunk_size} ({chunk_bytes} bytes)\n'
+            f'  - Use Threads: {use_threads}\n'
+            f'  - Max Threads: {max_threads}\n'
+            f'  - AWS Profile: {profile_name}\n\n'
+        )
+
         begin = datetime.now()
         self.stats['deposit_begin'] = begin.isoformat()
 
-        json_logfile_name = os.path.join(self.log_dir, self.name + '.json')
-
-        if self.mapfile:
-            mapfile_path = os.path.join(self.log_dir, self.mapfile + '.tmp')
-            mapfile = open(mapfile_path, 'w+')
-            fieldnames = ['id', 'relpath', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result']
-            writer = csv.DictWriter(mapfile, fieldnames=fieldnames)
-            writer.writeheader()
+        if self.manifest_filename:
+            results_file_exists = os.path.exists(self.results_filename)
+            results_file = open(self.results_filename, 'a')
+            fieldnames = ['id', 'filepath', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result', 'storagepath']
+            writer = csv.DictWriter(results_file, fieldnames=fieldnames)
+            if not results_file_exists:
+                writer.writeheader()
         else:
-            mapfile = None
+            results_file = None
             writer = None
 
         # Process and transfer each asset in the batch contents
         sys.stdout.write(f'Depositing {len(self.contents)} assets ...\n')
 
-        with open(json_logfile_name, 'w') as json_log:
+        with open(os.path.join(self.log_dir, 'assets.json'), 'w') as json_log:
             for n, asset in enumerate(self.contents, 1):
                 header = f'({n}) {asset.filename.upper()}'
                 key_path = f'{self.name}/{asset.relpath}'
-                expected_etag = asset.calculate_etag(chunk_size=self.chunk_bytes)
+                expected_etag = asset.calculate_etag(chunk_size=chunk_bytes)
 
                 # Prepare custom metadata to attach to the asset
                 asset.extra_args = {
-                    'StorageClass': self.storage_class,
+                    'StorageClass': storage_class,
                     'Metadata': {
                         'md5': asset.md5,
                         'bytes': str(asset.bytes)
@@ -169,25 +289,27 @@ class Batch:
                 }
 
                 # Display Asset information to the user
-                sys.stdout.write(f'\n{header}\n{"=" * len(header)}\n')
-                sys.stdout.write(f'    FILE: {asset.local_path}\n')
-                sys.stdout.write(f' KEYPATH: {key_path}\n')
-                sys.stdout.write(f'     EXT: {asset.extension}\n')
-                sys.stdout.write(f'   MTIME: {asset.mtime}\n')
-                sys.stdout.write(f'   BYTES: {asset.bytes}\n')
-                sys.stdout.write(f'     MD5: {asset.md5}\n')
-                sys.stdout.write(f'    ETAG: {expected_etag}\n\n')
+                sys.stdout.write(
+                    f'\n{header}\n{"=" * len(header)}\n'
+                    f'    FILE: {asset.local_path}\n'
+                    f' KEYPATH: {key_path}\n'
+                    f'     EXT: {asset.extension}\n'
+                    f'   MTIME: {asset.mtime}\n'
+                    f'   BYTES: {asset.bytes}\n'
+                    f'     MD5: {asset.md5}\n'
+                    f'    ETAG: {expected_etag}\n\n'
+                )
 
                 # Send the file, optionally in multipart, multithreaded mode
                 progress_tracker = ProgressPercentage(asset, self)
                 self.stats['assets_transmitted'] += 1
                 try:
-                    s3.meta.client.upload_file(
+                    s3_client.upload_file(
                         asset.local_path,
                         self.bucket,
                         key_path,
                         ExtraArgs=asset.extra_args,
-                        Config=self.aws_config,
+                        Config=aws_config,
                         Callback=progress_tracker
                     )
                 except S3UploadFailedError as e:
@@ -199,7 +321,7 @@ class Batch:
                 # Validate the upload with a head request to get the remote Etag
                 sys.stdout.write('\n\n  Upload complete! Verifying...\n')
                 try:
-                    response = s3.meta.client.head_object(Bucket=self.bucket, Key=key_path)
+                    response = s3_client.head_object(Bucket=self.bucket, Key=key_path)
                 except ClientError as e:
                     self.stats['failed_deposits'] += 1
                     print(f'Error verifying {self.bucket}/{key_path}: {e}', file=sys.stderr)
@@ -230,19 +352,20 @@ class Batch:
 
                 row = {
                     'id': n,
-                    'relpath': asset.relpath,
+                    'filepath': asset.local_path,
                     'filename': asset.filename,
                     'md5': asset.md5,
                     'bytes': asset.bytes,
                     'keypath': key_path,
                     'etag': remote_etag,
-                    'result': result
+                    'result': result,
+                    'storagepath': f'{self.bucket}/{key_path}'
                 }
                 if writer is not None:
                     writer.writerow(row)
 
-        if mapfile is not None:
-            mapfile.close()
+        if results_file is not None:
+            results_file.close()
 
         end = datetime.now()
         self.stats['deposit_end'] = end.isoformat()

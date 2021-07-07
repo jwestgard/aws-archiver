@@ -1,35 +1,77 @@
 # aws-archiver
+
 Command-line preservation archiving tool for S3
 
 ## Purpose
-The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3 storage while ensuring end-to-end asset fixity and the creation of auditable deposit records.
+
+The aws-archiver tool is intended to facilitate deposit of assets to Amazon S3
+storage while ensuring end-to-end asset fixity and the creation of auditable
+deposit records.
 
 ## Installation
+
 To install the tool for system-wide access, the recommended method is via pip:
+
 ```
 $ git clone https://www.github.com/jwestgard/aws-archiver
 $ cd aws-archiver && pip install -e .
 ```
 
 ## Usage
-The tool is still under development. Currently, there are two primary modes of making deposits: 
+
+The tool is still under development. Currently, there are three modes of making
+deposits: 
+
   1. as a single asset specified by the ```-a ASSET``` option; or 
-  2. as a batch defined in a manifest file specified by the ```-m MAPFILE``` option.
+  2. as a batch defined in a manifest file specified by the ```-m MAPFILE```
+     option; or
+  3. as a collection of batches using the ```batch-deposit``` subcommand.
 
 For details on format and creation of batch manifests, see the following section.
 
 ### Batch manifest file
-Collections of files are loaded using a manifest file. The format of the manifest is a text file listing one asset per line, in the form ```<md5 hash> <whitespace> <absolute local path>```. This is the same line format as the output of the Unix ```md5sum``` utility.  As a convenience, a script to generate the latter from a directory of files is included in this repository's ```bin``` directory.
+
+Collections of files are loaded using a manifest file. There are two types of
+manifest files:
+
+* md5sum manifest files
+* patsy-db manifest files
+
+#### md5sum manifest files
+
+A text file listing one asset per line, in the form
+```<md5 hash> <whitespace> <absolute local path>```. This is the same line
+format as the output of the Unix ```md5sum``` utility.  As a convenience, a
+script to generate the latter from a directory of files is included in this
+repository's ```bin``` directory.
 
 To create a batch manifest with the included script, do:
+
 ```
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
+#### patsy-db manifest files
+
+A CSV file listing one asset per line, in the form
+
+```
+<md5 hash>,<absolute local path>,<relative path>
+```
+
+See the "patsy-db" documentation for information about creating the manifest
+file.
+
 ### AWS credentials
-AWS credentials are required for making deposits. This tool uses the boto3 library to manage authorization using AWS authentication profiles. These profiles are stored in ```~/.aws/credentials```. To choose a profile to use with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool will default to the default profile. The chosen profile must have write permission for the bucket specified in the ```-b BUCKET``` option.
+AWS credentials are required for making deposits. This tool uses the boto3
+library to manage authorization using AWS authentication profiles. These
+profiles are stored in ```~/.aws/credentials```. To choose a profile to use
+with a batch, use the ```-p PROFILE``` option. If left unspecified, the tool
+will default to the default profile. The chosen profile must have write
+permission for the bucket specified in the ```-b BUCKET``` option.
 
 ### Summary of options
+
 ```
 S3 preservation archiver
 
@@ -61,8 +103,21 @@ optional arguments:
   -t THREADS, --threads THREADS  Maximum number of concurrent threads
 ```
 
+### Batch deposit summary
+
+```
+usage: archiver batch-deposit [-h] -f BATCHES_FILE [-p PROFILE]
+
+optional arguments:
+  -h, --help                        show this help message and exit
+  -f BATCHES_FILE, --batches-file   BATCHES_FILE
+  -p PROFILE, --profile PROFILE     AWS authorization profile
+```
+
 ### Default option values
-Many of the arguments listed above as "optional" are necessary for the load and therefore have the following default values:
+
+Many of the arguments listed above as "optional" are necessary for the load and
+therefore have the following default values:
 
 | option            | default       |
 |-------------------|---------------|
@@ -73,9 +128,19 @@ Many of the arguments listed above as "optional" are necessary for the load and 
 | '-r', '--root'    | '.'           |
 | '-s', '--storage' | 'DEEP_ARCHIVE'|
 | '-t', '--threads' | 10            |
-  
-## Known issues
-This relative path caluclulation problem has now been described in [issue #3](https://github.com/jwestgard/aws-archiver/issues/3).
 
-## Development roadmap
-To facilitate loading large quantities of assets (i.e. multiple batches), a "batch of batches" mode will be added. This will provide the ability to define a set of batches in a CSV file containing the path to each batch manifest file as well as the values to use for each batch's options.
+
+## Running the Tests
+
+The unit tests for the application can be run using "pytest", i.e.:
+
+```
+> pytest
+```
+
+**Note:** Currently a deprecation warning related to the "botocore" dependency
+is being reported by pytest. To suppress this warning, run:
+
+```
+> pytest -p no:warnings
+```

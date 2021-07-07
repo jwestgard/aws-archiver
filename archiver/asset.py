@@ -1,7 +1,7 @@
 import hashlib
 import os
-
-from .exceptions import ConfigException, PathOutOfScopeException
+from .exceptions import ConfigException
+from .utils import calculate_relative_path
 
 GB = 1024 ** 3
 
@@ -11,9 +11,7 @@ class Asset:
     Class representing a binary resource to be archived.
     """
 
-    def __init__(self, path, batch_root, md5=None):
-        if not batch_root.endswith('/'):
-            batch_root += '/'
+    def __init__(self, path, md5=None, relpath=None):
         self.local_path = path
         self.md5        = md5 or self.calculate_md5()
         self.filename   = os.path.basename(self.local_path)
@@ -21,10 +19,7 @@ class Asset:
         self.directory  = os.path.dirname(self.local_path)
         self.bytes      = os.path.getsize(self.local_path)
         self.extension  = os.path.splitext(self.filename)[1].lstrip('.').upper()
-        if self.local_path.startswith(batch_root):
-            self.relpath = self.local_path[len(batch_root):]
-        else:
-            raise PathOutOfScopeException(path=self.local_path, base_path=batch_root)
+        self.relpath = relpath
 
     def calculate_md5(self):
         """
@@ -42,6 +37,22 @@ class Asset:
         the specified chunk size, the hash of all the chunk hashes concatenated
         together, followed by the number of chunks.
         """
+        file_size = os.path.getsize(self.local_path)
+
+        if file_size == 0:
+            # Special handling for zero byte files, just return the MD5 sum of
+            # an empty string
+            return hashlib.md5(b'').hexdigest()
+
+        # Min unchunked file_size is the smaller of chunk_size and GB
+        min_unchunked_file_size = min(chunk_size, GB)
+
+        # For files that are small enough not to be chunked, simply return
+        # the asset MD5
+        use_asset_md5 = (file_size < min_unchunked_file_size) and self.md5
+        if use_asset_md5:
+            return self.md5
+
         md5s = []
         with open(self.local_path, 'rb') as handle:
             if chunk_size < GB:
