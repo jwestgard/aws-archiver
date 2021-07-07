@@ -13,12 +13,12 @@ class Asset:
 
     def __init__(self, path, md5=None, relpath=None):
         self.local_path = path
-        self.md5        = md5 or self.calculate_md5()
-        self.filename   = os.path.basename(self.local_path)
-        self.mtime      = int(os.path.getmtime(self.local_path))
-        self.directory  = os.path.dirname(self.local_path)
-        self.bytes      = os.path.getsize(self.local_path)
-        self.extension  = os.path.splitext(self.filename)[1].lstrip('.').upper()
+        self.md5 = md5 or self.calculate_md5()
+        self.filename = os.path.basename(self.local_path)
+        self.mtime = int(os.path.getmtime(self.local_path))
+        self.directory = os.path.dirname(self.local_path)
+        self.bytes = os.path.getsize(self.local_path)
+        self.extension = os.path.splitext(self.filename)[1].lstrip('.').upper()
         self.relpath = relpath
 
     def calculate_md5(self):

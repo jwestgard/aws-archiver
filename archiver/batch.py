@@ -16,6 +16,7 @@ from .asset import Asset
 from .exceptions import ConfigException, PathOutOfScopeException, FailureException
 from .utils import calculate_relative_path
 
+
 def get_s3_client(profile_name):
     """
     Set up a session with specified authentication profile.
