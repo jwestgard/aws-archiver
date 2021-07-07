@@ -20,9 +20,9 @@ $ cd aws-archiver && pip install -e .
 ## Usage
 
 The tool is still under development. Currently, there are three modes of making
-deposits: 
+deposits:
 
-  1. as a single asset specified by the ```-a ASSET``` option; or 
+  1. as a single asset specified by the ```-a ASSET``` option; or
   2. as a batch defined in a manifest file specified by the ```-m MAPFILE```
      option; or
   3. as a collection of batches using the ```batch-deposit``` subcommand.
@@ -129,18 +129,6 @@ therefore have the following default values:
 | '-s', '--storage' | 'DEEP_ARCHIVE'|
 | '-t', '--threads' | 10            |
 
+## Development Setup
 
-## Running the Tests
-
-The unit tests for the application can be run using "pytest", i.e.:
-
-```
-> pytest
-```
-
-**Note:** Currently a deprecation warning related to the "botocore" dependency
-is being reported by pytest. To suppress this warning, run:
-
-```
-> pytest -p no:warnings
-```
+See [docs/DevelopmentSetup.md](docs/DevelopmentSetup.md).

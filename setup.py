@@ -15,5 +15,10 @@ setup(
     entry_points = {
         'console_scripts': ['archiver=archiver.__main__:main']
         },
-    install_requires=[i.strip() for i in open("requirements.txt").readlines()]
+    install_requires=[i.strip() for i in open("requirements.txt").readlines()],
+    python_requires='>=3.7',
+    extras_require={  # Optional
+       'dev': [],
+       'test': [],
+    }
 )
