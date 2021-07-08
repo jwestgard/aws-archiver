@@ -1,0 +1,33 @@
+import csv
+import os
+
+
+class Md5SumManifest:
+    def __init__(self, manifest_filename):
+        self.manifest_filename = manifest_filename
+        self.manifest_path = os.path.dirname(manifest_filename)
+
+    def batch_name(self):
+        """
+        Returns None, as MD5 Sum manifest does not specify the batch name
+        """
+        return None
+
+    def load_manifest(self, results_filename, batch):
+        if os.path.isfile(results_filename):
+            with open(results_filename, 'r') as results_file:
+                results = csv.DictReader(results_file)
+                completed = set((row.get('MD5'), row.get('PATH')) for row in results)
+        else:
+            completed = set()
+
+        with open(self.manifest_filename) as manifest_file:
+            for line in manifest_file:
+                if line is '':
+                    continue
+                else:
+                    # using None as delimiter splits on any whitespace
+                    md5, path = line.strip().split(None, 1)
+                    manifest_row = {'MD5': md5, 'PATH': path}
+                    if (md5, path) not in completed:
+                        batch.add_asset(path, md5, manifest_row=manifest_row)

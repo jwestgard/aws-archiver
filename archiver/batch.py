@@ -36,6 +36,7 @@ def get_s3_client(profile_name, dry_run=False):
             raise FailureException from e
         return session.resource('s3').meta.client
 
+
 class ProgressPercentage:
     """Display upload progress using callbacks."""
 
@@ -91,15 +92,19 @@ class Batch:
     and an AWS configuration where they will be archived.
     """
 
-    def __init__(self, manifest_path, bucket, asset_root, name=None, log_dir=None):
+    def __init__(self, manifest, bucket, asset_root, name=None, log_dir=None):
         """
         Set up a batch of assets to be loaded. Any assets whose local paths don't exist are omitted from the batch.
         """
-        self.manifest_path = manifest_path
-        if name is not None:
-            self.name = name
-        else:
-            self.name = os.path.basename(self.manifest_path)
+        self.manifest = manifest
+
+        self.name = manifest.batch_name()
+        if self.name is None:
+            if name is not None:
+                self.name = name
+            else:
+                self.name = manifest.manifest_path
+
         self.bucket = bucket
 
         if asset_root is None:
@@ -109,7 +114,7 @@ class Batch:
             if not self.asset_root.endswith('/'):
                 self.asset_root += '/'
 
-        self.log_dir = os.path.join(self.manifest_path, log_dir if log_dir is not None else DEFAULT_LOG_DIR)
+        self.log_dir = os.path.join(manifest.manifest_path, log_dir if log_dir is not None else DEFAULT_LOG_DIR)
         if not os.path.isdir(self.log_dir):
             os.mkdir(self.log_dir)
 
@@ -131,93 +136,6 @@ class Batch:
             'deposit_end': '',
             'deposit_time': 0
         }
-
-    # Read assets information from an md5sum-style listing
-    def load_manifest(self, manifest):
-        if os.path.isfile(self.results_filename):
-            with open(self.results_filename, 'r') as results_file:
-                results = csv.DictReader(results_file)
-                completed = set((row.get('md5'), row.get('filepath')) for row in results)
-        else:
-            completed = set()
-
-        self.manifest_filename = os.path.join(self.manifest_path, manifest)
-        self.load_manifest_file(self.manifest_filename, completed)
-
-    def load_manifest_file(self, manifest_filename, completed):
-        """
-        Adds all the assets in the given manifest_filename, skipping
-        any entries that are in the "completed" set.
-
-        :param manifest_filename: the filepath to the manifest file
-        :param completed: the set of md5 and local_path entries that have been
-                          already uploaded
-        """
-        # Determine type of manifest file
-        manifest_file_type = Batch.manifest_file_type(manifest_filename)
-
-        if manifest_file_type == ManifestFileType.MD5_SUM:
-            self.load_md5sum_manifest_file(manifest_filename, completed)
-        else:
-            self.load_patsy_manifest_file(manifest_filename, completed)
-
-    def load_md5sum_manifest_file(self, manifest_filename, completed):
-        """
-        Adds all the assets in the given manifest_filename, which is assumed to
-        be in the "md5sum" format, skipping any entries that are in the
-        "completed" set.
-
-        :param manifest_filename: the filepath to the manifest file
-        :param completed: the set of md5 and local_path entries that have been
-                          already uploaded
-        """
-        with open(manifest_filename) as manifest_file:
-            for line in manifest_file:
-                if line is '':
-                    continue
-                else:
-                    # using None as delimiter splits on any whitespace
-                    md5, path = line.strip().split(None, 1)
-                    manifest_row = {'MD5': md5, 'PATH': path}
-                    if (md5, path) not in completed:
-                        self.add_asset(path, md5, manifest_row=manifest_row)
-
-    def load_patsy_manifest_file(self, manifest_filename, completed):
-        """
-        Adds all the assets in the given manifest_filename, which is assumed to
-        be in the "patsy-db" format, skipping any entries that are in the
-        "completed" set.
-
-        :param manifest_filename: the filepath to the manifest file
-        :param completed: the set of md5 and local_path entries that have been
-                          already uploaded
-        """
-        with open(manifest_filename) as manifest_file:
-            reader = csv.DictReader(manifest_file, delimiter=',')
-            for row in reader:
-                md5 = row['md5']
-                path = row['filepath']
-                relpath = row['relpath']
-                if (md5, path) not in completed:
-                    self.add_asset(path, md5, relpath=relpath, manifest_row=row)
-
-    @staticmethod
-    def manifest_file_type(manifest_filename):
-        """
-        Returns the ManifestFileType indicating which type of manifest
-        the given file is.
-
-        :param manifest_filename: the filepath to the manifest file
-        :return: a ManifestFileType indicating the type of manifest
-        """
-        with open(manifest_filename) as manifest_file:
-            # Read the first line
-            line = manifest_file.readline().strip()
-
-            if line == "md5,filepath,relpath":
-                return ManifestFileType.PATSY_DB
-
-        return ManifestFileType.MD5_SUM
 
     def add_asset(self, path, md5=None, relpath=None, manifest_row=None):
         try:
@@ -269,7 +187,7 @@ class Batch:
         begin = datetime.now()
         self.stats['deposit_begin'] = begin.isoformat()
 
-        if self.manifest_filename:
+        if self.manifest.manifest_filename:
             results_file_exists = os.path.exists(self.results_filename)
             results_file = open(self.results_filename, 'a')
             fieldnames = ['id']
@@ -390,4 +308,3 @@ class Batch:
         end = datetime.now()
         self.stats['deposit_end'] = end.isoformat()
         self.stats['deposit_time'] = (end - begin).total_seconds()
-

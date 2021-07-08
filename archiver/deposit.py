@@ -7,21 +7,45 @@ import yaml
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
 
+from .manifests.md5_sum_manifest import Md5SumManifest
+from .manifests.patsy_db_manifest import PatsyDbManifest
+from .manifests.single_asset_manifest import SingleAssetManifest
+
+
+def manifest_factory(manifest_filename):
+    """
+    Returns the appropriate Manifest implementation for th file
+    """
+    if manifest_filename is None:
+        return SingleAssetManifest(os.path.curdir)
+    with open(manifest_filename) as manifest_file:
+        # Read the first line
+        line = manifest_file.readline().strip()
+
+        if line == "md5,filepath,relpath":
+            return PatsyDbManifest(manifest_filename)
+        else:
+            return Md5SumManifest(manifest_filename)
+
 
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
+        load_single_asset = args.mapfile is None
+        manifest = manifest_factory(args.mapfile)
+
         batch = Batch(
-            manifest_path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
+            manifest,
             name=args.name,
             bucket=args.bucket,
             asset_root=args.root,
             log_dir=args.logs
         )
-        if args.mapfile is not None:
-            batch.load_manifest(args.mapfile)
-        else:
+
+        if load_single_asset:
             batch.add_asset(args.asset)
+        else:
+            manifest.load_manifest(batch.results_filename, batch)
 
     except ConfigException as e:
         print(e, file=sys.stderr)
@@ -61,14 +85,18 @@ def batch_deposit(args):
 
         for config in batch_configs['batches']:
             try:
+                manifest_filename = os.path.join(batches_dir, config.get('path'),
+                                                 config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest = manifest_factory(manifest_filename)
+
                 batch = Batch(
-                    manifest_path=os.path.join(batches_dir, config.get('path')),
+                    manifest,
                     bucket=config.get('bucket'),
                     asset_root=config.get('asset_root'),
                     name=config.get('name'),
                     log_dir=config.get('logs')
                 )
-                batch.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME), batch)
             except ConfigException as e:
                 print(e, file=sys.stderr)
                 raise FailureException from e
