@@ -178,8 +178,9 @@ class Batch:
                 else:
                     # using None as delimiter splits on any whitespace
                     md5, path = line.strip().split(None, 1)
+                    manifest_row = {'MD5': md5, 'PATH': path}
                     if (md5, path) not in completed:
-                        self.add_asset(path, md5)
+                        self.add_asset(path, md5, manifest_row=manifest_row)
 
     def load_patsy_manifest_file(self, manifest_filename, completed):
         """
@@ -198,7 +199,7 @@ class Batch:
                 path = row['filepath']
                 relpath = row['relpath']
                 if (md5, path) not in completed:
-                    self.add_asset(path, md5, relpath=relpath)
+                    self.add_asset(path, md5, relpath=relpath, manifest_row=row)
 
     @staticmethod
     def manifest_file_type(manifest_filename):
@@ -218,13 +219,13 @@ class Batch:
 
         return ManifestFileType.MD5_SUM
 
-    def add_asset(self, path, md5=None, relpath=None):
+    def add_asset(self, path, md5=None, relpath=None, manifest_row=None):
         try:
             self.stats['total_assets'] += 1
             if (self.asset_root is not None) and (relpath is None):
                 relpath = calculate_relative_path(self.asset_root, path)
 
-            asset = Asset(path, md5, relpath=relpath)
+            asset = Asset(path, md5, relpath=relpath, manifest_row=manifest_row)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
@@ -271,7 +272,14 @@ class Batch:
         if self.manifest_filename:
             results_file_exists = os.path.exists(self.results_filename)
             results_file = open(self.results_filename, 'a')
-            fieldnames = ['id', 'filepath', 'filename', 'md5', 'bytes', 'keypath', 'etag', 'result', 'storagepath']
+            fieldnames = ['id']
+            # Include fields from the manifest in the results file
+            if (len(self.contents) > 0):
+                first_asset = self.contents[0]
+                manifest_row = first_asset.manifest_row
+                if manifest_row:
+                    fieldnames.extend(manifest_row.keys())
+            fieldnames.extend(['keypath', 'etag', 'result', 'storagepath'])
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
             if not results_file_exists:
                 writer.writeheader()
@@ -365,15 +373,14 @@ class Batch:
 
                 row = {
                     'id': n,
-                    'filepath': asset.local_path,
-                    'filename': asset.filename,
-                    'md5': asset.md5,
-                    'bytes': asset.bytes,
                     'keypath': key_path,
                     'etag': remote_etag,
                     'result': result,
                     'storagepath': f'{self.bucket}/{key_path}'
                 }
+                if asset.manifest_row:
+                    row.update(asset.manifest_row)
+
                 if writer is not None:
                     writer.writerow(row)
 
