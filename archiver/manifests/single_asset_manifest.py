@@ -1,8 +1,8 @@
-import csv
 import os
+from .manifest import Manifest
 
 
-class SingleAssetManifest:
+class SingleAssetManifest(Manifest):
     """
     Placeholder manifest for a single asset.
     The asset must be added to the Batch manuall.

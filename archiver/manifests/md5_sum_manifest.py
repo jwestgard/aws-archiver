@@ -1,8 +1,13 @@
+
 import csv
 import os
+from .manifest import Manifest
 
 
-class Md5SumManifest:
+class Md5SumManifest(Manifest):
+    """
+    Manifest class for "MD5 Sum" manifest files
+    """
     def __init__(self, manifest_filename):
         self.manifest_filename = manifest_filename
         self.manifest_path = os.path.dirname(manifest_filename)

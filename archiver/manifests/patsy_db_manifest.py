@@ -1,8 +1,12 @@
 import csv
 import os
+from .manifest import Manifest
 
 
-class PatsyDbManifest:
+class PatsyDbManifest(Manifest):
+    """
+    Manifest class for "Patsy DB" manifest files
+    """
     def __init__(self, manifest_filename):
         self.manifest_filename = manifest_filename
         self.manifest_path = os.path.dirname(manifest_filename)
