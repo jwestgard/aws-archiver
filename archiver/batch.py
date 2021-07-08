@@ -196,7 +196,7 @@ class Batch:
                 manifest_row = first_asset.manifest_row
                 if manifest_row:
                     fieldnames.extend(manifest_row.keys())
-            fieldnames.extend(['keypath', 'etag', 'result', 'storagepath'])
+            fieldnames.extend(['keypath', 'etag', 'result', 'storageprovider', 'storagepath'])
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
             if not results_file_exists:
                 writer.writeheader()
@@ -293,6 +293,7 @@ class Batch:
                     'keypath': key_path,
                     'etag': remote_etag,
                     'result': result,
+                    'storageprovider': 'AWS',
                     'storagepath': f'{self.bucket}/{key_path}'
                 }
                 if asset.manifest_row:
