@@ -1,3 +1,4 @@
+from archiver.manifests.inventory_manifest import InventoryManifest
 import csv
 import os
 import sys
@@ -24,6 +25,8 @@ def manifest_factory(manifest_filename):
 
         if line == "md5,filepath,relpath":
             return PatsyDbManifest(manifest_filename)
+        elif line == "BATCH,PATH,DIRECTORY,RELPATH,FILENAME,EXTENSION,BYTES,MTIME,MODDATE,MD5,SHA1,SHA256":
+            return InventoryManifest(manifest_filename)
         else:
             return Md5SumManifest(manifest_filename)
 

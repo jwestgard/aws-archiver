@@ -1,10 +1,10 @@
 import os
 import unittest
-from archiver.batch import Batch, ManifestFileType
+from archiver.batch import Batch
 from archiver.deposit import manifest_factory
-from unittest.mock import patch, MagicMock
 
 from archiver.manifests.md5_sum_manifest import Md5SumManifest
+from archiver.manifests.inventory_manifest import InventoryManifest
 from archiver.manifests.patsy_db_manifest import PatsyDbManifest
 from archiver.manifests.single_asset_manifest import SingleAssetManifest
 
@@ -12,6 +12,14 @@ from archiver.manifests.single_asset_manifest import SingleAssetManifest
 class TestBatch(unittest.TestCase):
     def setUp(self):
         pass
+
+    def test_load_inventory_manifest(self):
+        manifest = manifest_factory('tests/data/manifests/sample_inventory_manifest.csv')
+        self.assertIsInstance(manifest, InventoryManifest)
+        batch = Batch(manifest, bucket='test_bucket', asset_root='/', log_dir='/tmp')
+        manifest.load_manifest('sample_inventory_manifest.csv', batch)
+        self.assertEqual(11, batch.stats['total_assets'])
+        self.assertEqual(11, batch.stats['assets_missing'])
 
     def test_load_md5sum_manifest(self):
         manifest = manifest_factory('tests/data/manifests/sample_md5sum_manifest.txt')
@@ -38,6 +46,9 @@ class TestBatch(unittest.TestCase):
 
         manifest = manifest_factory(None)
         self.assertIsInstance(manifest, SingleAssetManifest)
+
+        manifest = manifest_factory('tests/data/manifests/sample_inventory_manifest.csv')
+        self.assertIsInstance(manifest, InventoryManifest)
 
     def test_add_asset_without_specified_relpath(self):
         sample_file_1_path = os.path.abspath('tests/data/files/sample_file_1.txt')

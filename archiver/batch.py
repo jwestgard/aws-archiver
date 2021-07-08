@@ -97,8 +97,7 @@ class Batch:
         Set up a batch of assets to be loaded. Any assets whose local paths don't exist are omitted from the batch.
         """
         self.manifest = manifest
-
-        self.name = manifest.batch_name()
+        self.name = manifest.batch_name
         if self.name is None:
             if name is not None:
                 self.name = name
