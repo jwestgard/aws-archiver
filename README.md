@@ -63,6 +63,7 @@ See the "patsy-db" documentation for information about creating the manifest
 file.
 
 ### AWS credentials
+
 AWS credentials are required for making deposits. This tool uses the boto3
 library to manage authorization using AWS authentication profiles. These
 profiles are stored in ```~/.aws/credentials```. To choose a profile to use
@@ -101,6 +102,7 @@ optional arguments:
   -r ROOT, --root ROOT           Root dir of files being archived
   -s STORAGE, --storage STORAGE  S3 storage class
   -t THREADS, --threads THREADS  Maximum number of concurrent threads
+  --dry-run                      Perform a "dry run" without actually contacting AWS.
 ```
 
 ### Batch deposit summary

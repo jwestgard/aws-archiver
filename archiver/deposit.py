@@ -32,7 +32,8 @@ def deposit(args):
         profile_name=args.profile,
         chunk_size=args.chunk,
         storage_class=args.storage,
-        max_threads=args.threads
+        max_threads=args.threads,
+        dry_run=args.dry_run
     )
 
 
@@ -78,7 +79,8 @@ def batch_deposit(args):
                 profile_name=args.profile,
                 chunk_size=config.get('chunk_size'),
                 storage_class=config.get('storage_class'),
-                max_threads=config.get('max_threads')
+                max_threads=config.get('max_threads'),
+                dry_run=args.dry_run
             )
             writer.writerow(batch.stats)
             for key, value in batch.stats.items():

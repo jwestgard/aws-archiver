@@ -17,17 +17,24 @@ from .exceptions import ConfigException, PathOutOfScopeException, FailureExcepti
 from .utils import calculate_relative_path
 
 
-def get_s3_client(profile_name):
+def get_s3_client(profile_name, dry_run=False):
     """
     Set up a session with specified authentication profile.
     """
-    try:
-        session = boto3.session.Session(profile_name=profile_name)
-    except ProfileNotFound as e:
-        print(e, file=sys.stderr)
-        raise FailureException from e
-    return session.resource('s3').meta.client
+    if dry_run:
+        from unittest.mock import MagicMock
+        mock_s3_client = MagicMock()
+        response = {'ResponseMetadata': {'HTTPHeaders': {'etag': 'DRY_RUN'}}}
+        mock_s3_client.head_object = MagicMock(return_value=response)
 
+        return mock_s3_client
+    else:
+        try:
+            session = boto3.session.Session(profile_name=profile_name)
+        except ProfileNotFound as e:
+            print(e, file=sys.stderr)
+            raise FailureException from e
+        return session.resource('s3').meta.client
 
 class ProgressPercentage:
     """Display upload progress using callbacks."""
@@ -227,8 +234,8 @@ class Batch:
             self.stats['assets_ignored'] += 1
             print(f'Skipping {path}: {e}', file=sys.stderr)
 
-    def deposit(self, profile_name, chunk_size=None, storage_class=None, max_threads=None):
-        s3_client = get_s3_client(profile_name)
+    def deposit(self, profile_name, chunk_size=None, storage_class=None, max_threads=None, dry_run=False):
+        s3_client = get_s3_client(profile_name, dry_run)
 
         if chunk_size is None:
             chunk_size = DEFAULT_CHUNK_SIZE
@@ -254,7 +261,8 @@ class Batch:
             f'  - Chunk Size: {chunk_size} ({chunk_bytes} bytes)\n'
             f'  - Use Threads: {use_threads}\n'
             f'  - Max Threads: {max_threads}\n'
-            f'  - AWS Profile: {profile_name}\n\n'
+            f'  - AWS Profile: {profile_name}\n'
+            f'  - Dry Run: {dry_run}\n\n'
         )
 
         begin = datetime.now()
@@ -342,6 +350,10 @@ class Batch:
                 remote_etag = headers['etag'].replace('"', '')
                 sys.stdout.write(f'    -> Local:  {expected_etag}\n')
                 sys.stdout.write(f'    -> Remote: {remote_etag}\n\n')
+
+                if dry_run:
+                    expected_etag = remote_etag
+
                 if remote_etag == expected_etag:
                     self.stats['successful_deposits'] += 1
                     sys.stdout.write(f'  ETag match! Transfer success!\n')
@@ -371,3 +383,4 @@ class Batch:
         end = datetime.now()
         self.stats['deposit_end'] = end.isoformat()
         self.stats['deposit_time'] = (end - begin).total_seconds()
+
