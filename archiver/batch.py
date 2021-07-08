@@ -137,7 +137,7 @@ class Batch:
         if os.path.isfile(self.results_filename):
             with open(self.results_filename, 'r') as results_file:
                 results = csv.DictReader(results_file)
-                completed = set((row.get('md5'), row.get('local_path')) for row in results)
+                completed = set((row.get('md5'), row.get('filepath')) for row in results)
         else:
             completed = set()
 
