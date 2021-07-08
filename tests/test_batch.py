@@ -1,12 +1,7 @@
 import os
 import unittest
 from archiver.batch import Batch
-from archiver.deposit import manifest_factory
-
-from archiver.manifests.md5_sum_manifest import Md5SumManifest
-from archiver.manifests.inventory_manifest import InventoryManifest
-from archiver.manifests.patsy_db_manifest import PatsyDbManifest
-from archiver.manifests.single_asset_manifest import SingleAssetManifest
+from archiver.manifests.manifest_factory import ManifestFactory
 
 
 class TestBatch(unittest.TestCase):
@@ -14,46 +9,30 @@ class TestBatch(unittest.TestCase):
         pass
 
     def test_load_inventory_manifest(self):
-        manifest = manifest_factory('tests/data/manifests/sample_inventory_manifest.csv')
-        self.assertIsInstance(manifest, InventoryManifest)
+        manifest = ManifestFactory.create('tests/data/manifests/sample_inventory_manifest.csv')
         batch = Batch(manifest, bucket='test_bucket', asset_root='/', log_dir='/tmp')
         manifest.load_manifest('sample_inventory_manifest.csv', batch)
         self.assertEqual(11, batch.stats['total_assets'])
         self.assertEqual(11, batch.stats['assets_missing'])
 
     def test_load_md5sum_manifest(self):
-        manifest = manifest_factory('tests/data/manifests/sample_md5sum_manifest.txt')
-        self.assertIsInstance(manifest, Md5SumManifest)
+        manifest = ManifestFactory.create('tests/data/manifests/sample_md5sum_manifest.txt')
         batch = Batch(manifest, bucket='test_bucket', asset_root='/', log_dir='/tmp')
         manifest.load_manifest('sample_md5sum_manifest.txt', batch)
         self.assertEqual(5, batch.stats['total_assets'])
         self.assertEqual(5, batch.stats['assets_missing'])
 
     def test_load_patsy_manifest(self):
-        manifest = manifest_factory('tests/data/manifests/sample_patsy_manifest.csv')
-        self.assertIsInstance(manifest, PatsyDbManifest)
+        manifest = ManifestFactory.create('tests/data/manifests/sample_patsy_manifest.csv')
         batch = Batch(manifest, bucket='test_bucket', asset_root='/', log_dir='/tmp')
         manifest.load_manifest('sample_patsy_manifest.csv', batch)
         self.assertEqual(5, batch.stats['total_assets'])
         self.assertEqual(5, batch.stats['assets_missing'])
 
-    def test_manifest_factory(self):
-        manifest = manifest_factory('tests/data/manifests/sample_md5sum_manifest.txt')
-        self.assertIsInstance(manifest, Md5SumManifest)
-
-        manifest = manifest_factory('tests/data/manifests/sample_patsy_manifest.csv')
-        self.assertIsInstance(manifest, PatsyDbManifest)
-
-        manifest = manifest_factory(None)
-        self.assertIsInstance(manifest, SingleAssetManifest)
-
-        manifest = manifest_factory('tests/data/manifests/sample_inventory_manifest.csv')
-        self.assertIsInstance(manifest, InventoryManifest)
-
     def test_add_asset_without_specified_relpath(self):
         sample_file_1_path = os.path.abspath('tests/data/files/sample_file_1.txt')
         asset_root = os.path.abspath('.')
-        manifest = manifest_factory(None)
+        manifest = ManifestFactory.create(None)
         batch = Batch(manifest, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
 
         batch.add_asset(sample_file_1_path)
@@ -66,7 +45,7 @@ class TestBatch(unittest.TestCase):
     def test_add_asset_with_specified_relpath(self):
         sample_file_1_path = os.path.abspath('tests/data/files/sample_file_1.txt')
         asset_root = os.path.abspath('.')
-        manifest = manifest_factory(None)
+        manifest = ManifestFactory.create(None)
         batch = Batch(manifest, bucket='test_bucket', asset_root=asset_root, log_dir='/tmp')
 
         batch.add_asset(sample_file_1_path, relpath='test/specific/relpath/sample_file_1.txt')

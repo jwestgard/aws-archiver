@@ -8,34 +8,14 @@ import yaml
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
 
-from .manifests.md5_sum_manifest import Md5SumManifest
-from .manifests.patsy_db_manifest import PatsyDbManifest
-from .manifests.single_asset_manifest import SingleAssetManifest
-
-
-def manifest_factory(manifest_filename):
-    """
-    Returns the appropriate Manifest implementation for th file
-    """
-    if manifest_filename is None:
-        return SingleAssetManifest(os.path.curdir)
-    with open(manifest_filename) as manifest_file:
-        # Read the first line
-        line = manifest_file.readline().strip()
-
-        if line == "md5,filepath,relpath":
-            return PatsyDbManifest(manifest_filename)
-        elif line == "BATCH,PATH,DIRECTORY,RELPATH,FILENAME,EXTENSION,BYTES,MTIME,MODDATE,MD5,SHA1,SHA256":
-            return InventoryManifest(manifest_filename)
-        else:
-            return Md5SumManifest(manifest_filename)
+from .manifests.manifest_factory import ManifestFactory
 
 
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
         load_single_asset = args.mapfile is None
-        manifest = manifest_factory(args.mapfile)
+        manifest = ManifestFactory.create(args.mapfile)
 
         batch = Batch(
             manifest,
@@ -90,7 +70,7 @@ def batch_deposit(args):
             try:
                 manifest_filename = os.path.join(batches_dir, config.get('path'),
                                                  config.get('manifest', DEFAULT_MANIFEST_FILENAME))
-                manifest = manifest_factory(manifest_filename)
+                manifest = ManifestFactory.create(manifest_filename)
 
                 batch = Batch(
                     manifest,
