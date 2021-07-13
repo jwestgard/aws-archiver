@@ -1,3 +1,4 @@
+from archiver.manifests.inventory_manifest import InventoryManifest
 import csv
 import os
 import sys
@@ -7,21 +8,27 @@ import yaml
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
 
+from .manifests.manifest_factory import ManifestFactory
+
 
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
+        load_single_asset = args.mapfile is None
+        manifest = ManifestFactory.create(args.mapfile)
+
         batch = Batch(
-            manifest_path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
+            manifest,
             name=args.name,
             bucket=args.bucket,
             asset_root=args.root,
             log_dir=args.logs
         )
-        if args.mapfile is not None:
-            batch.load_manifest(args.mapfile)
-        else:
+
+        if load_single_asset:
             batch.add_asset(args.asset)
+        else:
+            manifest.load_manifest(batch.results_filename, batch)
 
     except ConfigException as e:
         print(e, file=sys.stderr)
@@ -32,7 +39,8 @@ def deposit(args):
         profile_name=args.profile,
         chunk_size=args.chunk,
         storage_class=args.storage,
-        max_threads=args.threads
+        max_threads=args.threads,
+        dry_run=args.dry_run
     )
 
 
@@ -60,14 +68,18 @@ def batch_deposit(args):
 
         for config in batch_configs['batches']:
             try:
+                manifest_filename = os.path.join(batches_dir, config.get('path'),
+                                                 config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest = ManifestFactory.create(manifest_filename)
+
                 batch = Batch(
-                    manifest_path=os.path.join(batches_dir, config.get('path')),
+                    manifest,
                     bucket=config.get('bucket'),
                     asset_root=config.get('asset_root'),
                     name=config.get('name'),
                     log_dir=config.get('logs')
                 )
-                batch.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME), batch)
             except ConfigException as e:
                 print(e, file=sys.stderr)
                 raise FailureException from e
@@ -78,7 +90,8 @@ def batch_deposit(args):
                 profile_name=args.profile,
                 chunk_size=config.get('chunk_size'),
                 storage_class=config.get('storage_class'),
-                max_threads=config.get('max_threads')
+                max_threads=config.get('max_threads'),
+                dry_run=args.dry_run
             )
             writer.writerow(batch.stats)
             for key, value in batch.stats.items():

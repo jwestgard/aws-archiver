@@ -116,6 +116,11 @@ def main():
         action='store',
         help='Archive a single asset'
     )
+    deposit_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Perform a "dry run" without actually contacting AWS.',
+    )
 
     deposit_parser.set_defaults(func=deposit)
 
