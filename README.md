@@ -13,7 +13,7 @@ deposit records.
 To install the tool for system-wide access, the recommended method is via pip:
 
 ```
-$ git clone https://www.github.com/jwestgard/aws-archiver
+$ git clone https://www.github.com/umd-lib/aws-archiver
 $ cd aws-archiver && pip install -e .
 ```
 
