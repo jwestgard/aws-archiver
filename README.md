@@ -143,6 +143,24 @@ therefore have the following default values:
 | '-s', '--storage' | 'DEEP_ARCHIVE'|
 | '-t', '--threads' | 10            |
 
+## Restoring from AWS Deep Glacier
+
+You can restore files from AWS Deep Glacier using the scripts [bin/requestfilesfromdeepglacier.sh](bin/requestfilesfromdeepglacier.sh) and [bin/copyfromawstolocal.sh](bin/copyfromawstolocal.sh).
+
+1. Install the [AWS CLI](https://aws.amazon.com/cli/). One option for installation is `brew install awscli`.
+
+2. Configure your region and credentials following the instructions in the AWS CLI Reference, [General Options](https://docs.aws.amazon.com/cli/latest/topic/config-vars.html?highlight=credentials#general-options) and [Credentials](https://docs.aws.amazon.com/cli/latest/topic/config-vars.html?highlight=credentials#credentials).
+
+3. Create a CSV input file with the list of files to restore, including the 3 columns bucketname, filelocation, fileserverlocation, without a header row.  The scripts will prompt for the name of the input file. Example file contents:
+
+  ```csv
+  libdc-archivebucket-foobarxyz,Archive092/scpa-062057-0018.tif,./restore_directory
+  ```
+
+4. Request the restoration from Deep Glacier to an S3 bucket using `bin/requestfilesfromdeepglacier.sh`. The restoration may take up to 48 hours to complete.
+
+5. Copy the file from the S3 bucket to the local file system using `bin/copyfromawstolocal.sh`.
+
 ## Development Setup
 
 See [docs/DevelopmentSetup.md](docs/DevelopmentSetup.md).
