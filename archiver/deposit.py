@@ -11,11 +11,30 @@ from .exceptions import ConfigException, FailureException
 from .manifests.manifest_factory import ManifestFactory
 
 
+def get_first_line(filename):
+    with open(filename) as file:
+       return file.readline().strip()
+
+def check_etag(manifest_filename: str) -> bool:
+        """
+        Determines if etags should be calculated during deposit
+        """
+        if manifest_filename is None:
+            return False
+        
+        # The first line has the headers
+        header = get_first_line(manifest_filename)
+        if 'ETAG' in header:
+            return True
+            
+        return False
+
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
         load_single_asset = args.mapfile is None
         manifest = ManifestFactory.create(args.mapfile)
+        etag_exists = check_etag(args.mapfile)
 
         batch = Batch(
             manifest,
@@ -28,7 +47,7 @@ def deposit(args):
         if load_single_asset:
             batch.add_asset(args.asset)
         else:
-            manifest.load_manifest(batch.results_filename, batch)
+            manifest.load_manifest(batch.results_filename, batch, etag_exists=etag_exists)
 
     except ConfigException as e:
         print(e, file=sys.stderr)
@@ -71,6 +90,7 @@ def batch_deposit(args):
                 manifest_filename = os.path.join(batches_dir, config.get('path'),
                                                  config.get('manifest', DEFAULT_MANIFEST_FILENAME))
                 manifest = ManifestFactory.create(manifest_filename)
+                etag_exists = check_etag(args.mapfile)
 
                 batch = Batch(
                     manifest,
@@ -79,7 +99,8 @@ def batch_deposit(args):
                     name=config.get('name'),
                     log_dir=config.get('logs')
                 )
-                manifest.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME), batch)
+                manifest.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME), batch,
+                                       etag_exists=etag_exists)
             except ConfigException as e:
                 print(e, file=sys.stderr)
                 raise FailureException from e

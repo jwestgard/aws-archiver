@@ -21,7 +21,7 @@ class InventoryManifest(Manifest):
         """
         return self.batch_name
 
-    def load_manifest(self, results_filename, batch):
+    def load_manifest(self, results_filename, batch, etag_exists=False):
         if os.path.isfile(results_filename):
             with open(results_filename, 'r') as results_file:
                 results = csv.DictReader(results_file)
@@ -32,8 +32,9 @@ class InventoryManifest(Manifest):
         with open(self.manifest_filename) as manifest_file:
             reader = csv.DictReader(manifest_file, delimiter=',')
             for row in reader:
+                etag = row['ETAG'] if etag_exists else None
                 md5 = row['MD5']
                 path = row['PATH']
                 relpath = row['RELPATH']
                 if (md5, path) not in completed:
-                    batch.add_asset(path, md5, relpath=relpath, manifest_row=row)
+                    batch.add_asset(path, md5, relpath=relpath, manifest_row=row, etag=etag)

@@ -11,7 +11,7 @@ class Asset:
     Class representing a binary resource to be archived.
     """
 
-    def __init__(self, path, md5=None, relpath=None, manifest_row=None):
+    def __init__(self, path, md5=None, relpath=None, manifest_row=None, etag=None):
         self.local_path = path
         self.md5 = md5 or self.calculate_md5()
         self.filename = os.path.basename(self.local_path)
@@ -21,6 +21,7 @@ class Asset:
         self.extension = os.path.splitext(self.filename)[1].lstrip('.').upper()
         self.relpath = relpath
         self.manifest_row = manifest_row
+        self.etag = etag
 
     def calculate_md5(self):
         """
