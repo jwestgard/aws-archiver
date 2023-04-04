@@ -7,20 +7,26 @@ from .single_asset_manifest import SingleAssetManifest
 
 class ManifestFactory:
     @staticmethod
-    def create(manifest_filename):
+    def create(manifest_filename: str):
         """
         Returns the appropriate Manifest implementation for the given file
         """
+        # These headers should be part of the inventory manifest
+        inventory_headers = \
+        {'BATCH','PATH','DIRECTORY','RELPATH','FILENAME','EXTENSION','BYTES','MTIME','MODDATE','MD5','SHA1','SHA256'}
+
+        # These should be in the patsy manifest
+        patsy_headers = {'md5','filepath','relpath'}
+
         if manifest_filename is None:
             return SingleAssetManifest(os.path.curdir)
         with open(manifest_filename) as manifest_file:
-            # Read the first line
-            line = manifest_file.readline().strip()
+            # The first line has the headers
+            header = manifest_file.readline().strip()
 
-            if line == "md5,filepath,relpath":
+            if all(h in header for h in patsy_headers):
                 return PatsyDbManifest(manifest_filename)
-            elif line == "BATCH,PATH,DIRECTORY,RELPATH,FILENAME,EXTENSION,BYTES,MTIME,MODDATE,MD5,SHA1,SHA256":
+            elif all(h in header for h in inventory_headers):
                 return InventoryManifest(manifest_filename)
             else:
-
                 return Md5SumManifest(manifest_filename)
