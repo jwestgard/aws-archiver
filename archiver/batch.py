@@ -136,13 +136,13 @@ class Batch:
             'deposit_time': 0
         }
 
-    def add_asset(self, path, md5=None, relpath=None, manifest_row=None):
+    def add_asset(self, path, md5=None, relpath=None, manifest_row=None, etag=None):
         try:
             self.stats['total_assets'] += 1
             if (self.asset_root is not None) and (relpath is None):
                 relpath = calculate_relative_path(self.asset_root, path)
 
-            asset = Asset(path, md5, relpath=relpath, manifest_row=manifest_row)
+            asset = Asset(path, md5, relpath=relpath, manifest_row=manifest_row, etag=etag)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
@@ -211,7 +211,12 @@ class Batch:
             for n, asset in enumerate(self.contents, 1):
                 header = f'({n}) {asset.filename.upper()}'
                 key_path = f'{self.name}/{asset.relpath}'
-                expected_etag = asset.calculate_etag(chunk_size=chunk_bytes)
+                
+                # Check if ETAG exists
+                if asset.etag is not None and asset.etag != '':
+                    expected_etag = asset.etag
+                else:
+                    expected_etag = asset.calculate_etag(chunk_size=chunk_bytes)
 
                 # Prepare custom metadata to attach to the asset
                 asset.extra_args = {
@@ -233,6 +238,7 @@ class Batch:
                     f'     MD5: {asset.md5}\n'
                     f'    ETAG: {expected_etag}\n\n'
                 )
+
 
                 # Send the file, optionally in multipart, multithreaded mode
                 progress_tracker = ProgressPercentage(asset, self)

@@ -28,7 +28,7 @@ class Md5SumManifest(Manifest):
 
         with open(self.manifest_filename) as manifest_file:
             for line in manifest_file:
-                if line is '':
+                if line == '':
                     continue
                 else:
                     # using None as delimiter splits on any whitespace
