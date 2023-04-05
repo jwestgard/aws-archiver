@@ -15,10 +15,11 @@ class ManifestFactory:
         """
         # These headers should be part of the inventory manifest
         inventory_headers = \
-        {'BATCH','PATH','DIRECTORY','RELPATH','FILENAME','EXTENSION','BYTES','MTIME','MODDATE','MD5','SHA1','SHA256'}
+            {'BATCH', 'PATH', 'DIRECTORY', 'RELPATH', 'FILENAME', 'EXTENSION', 'BYTES', 'MTIME', 'MODDATE', 'MD5',
+             'SHA1', 'SHA256'}
 
         # These should be in the patsy manifest
-        patsy_headers = {'md5','filepath','relpath'}
+        patsy_headers = {'md5', 'filepath', 'relpath'}
 
         if manifest_filename is None:
             return SingleAssetManifest(os.path.curdir)

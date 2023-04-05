@@ -11,18 +11,19 @@ from .utils import get_first_line
 
 
 def check_etag(manifest_filename: str) -> bool:
-        """
-        Determines if etags should be calculated during deposit
-        """
-        if manifest_filename is None:
-            return False
-        
-        # The first line has the headers
-        header = get_first_line(manifest_filename)
-        if 'ETAG' in header:
-            return True
-            
+    """
+    Determines if etags should be calculated during deposit
+    """
+    if manifest_filename is None:
         return False
+
+    # The first line has the headers
+    header = get_first_line(manifest_filename)
+    if 'ETAG' in header:
+        return True
+
+    return False
+
 
 def deposit(args):
     """Deposit a set of files into AWS."""
