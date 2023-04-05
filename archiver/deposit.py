@@ -1,4 +1,3 @@
-from archiver.manifests.inventory_manifest import InventoryManifest
 import csv
 import os
 import sys
@@ -7,7 +6,6 @@ import yaml
 
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
-
 from .manifests.manifest_factory import ManifestFactory
 from .utils import get_first_line
 

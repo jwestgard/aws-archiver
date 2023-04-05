@@ -1,4 +1,5 @@
 import os
+
 from .inventory_manifest import InventoryManifest
 from .md5_sum_manifest import Md5SumManifest
 from .patsy_db_manifest import PatsyDbManifest

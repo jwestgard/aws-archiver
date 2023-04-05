@@ -1,5 +1,6 @@
 import re
-from .exceptions import ConfigException, PathOutOfScopeException
+
+from .exceptions import PathOutOfScopeException
 
 
 def get_first_line(filename):
