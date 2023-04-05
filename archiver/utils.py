@@ -2,6 +2,11 @@ import re
 from .exceptions import ConfigException, PathOutOfScopeException
 
 
+def get_first_line(filename):
+    with open(filename) as file:
+        return file.readline().strip()
+
+
 def calculate_relative_path(batch_root, local_path):
     """
     Returns the relative path, i.e., the given local_path with the

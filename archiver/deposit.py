@@ -9,11 +9,8 @@ from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
 
 from .manifests.manifest_factory import ManifestFactory
+from .utils import get_first_line
 
-
-def get_first_line(filename):
-    with open(filename) as file:
-       return file.readline().strip()
 
 def check_etag(manifest_filename: str) -> bool:
         """

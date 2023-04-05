@@ -3,6 +3,7 @@ from .inventory_manifest import InventoryManifest
 from .md5_sum_manifest import Md5SumManifest
 from .patsy_db_manifest import PatsyDbManifest
 from .single_asset_manifest import SingleAssetManifest
+from ..utils import get_first_line
 
 
 class ManifestFactory:
@@ -20,13 +21,11 @@ class ManifestFactory:
 
         if manifest_filename is None:
             return SingleAssetManifest(os.path.curdir)
-        with open(manifest_filename) as manifest_file:
-            # The first line has the headers
-            header = manifest_file.readline().strip()
+        header = get_first_line(manifest_filename)
 
-            if all(h in header for h in patsy_headers):
-                return PatsyDbManifest(manifest_filename)
-            elif all(h in header for h in inventory_headers):
-                return InventoryManifest(manifest_filename)
-            else:
-                return Md5SumManifest(manifest_filename)
+        if all(h in header for h in patsy_headers):
+            return PatsyDbManifest(manifest_filename)
+        elif all(h in header for h in inventory_headers):
+            return InventoryManifest(manifest_filename)
+        else:
+            return Md5SumManifest(manifest_filename)
