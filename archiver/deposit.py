@@ -1,4 +1,3 @@
-from archiver.manifests.inventory_manifest import InventoryManifest
 import csv
 import os
 import sys
@@ -7,27 +6,24 @@ import yaml
 
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
-
 from .manifests.manifest_factory import ManifestFactory
+from .utils import get_first_line
 
-
-def get_first_line(filename):
-    with open(filename) as file:
-       return file.readline().strip()
 
 def check_etag(manifest_filename: str) -> bool:
-        """
-        Determines if etags should be calculated during deposit
-        """
-        if manifest_filename is None:
-            return False
-        
-        # The first line has the headers
-        header = get_first_line(manifest_filename)
-        if 'ETAG' in header:
-            return True
-            
+    """
+    Determines if etags should be calculated during deposit
+    """
+    if manifest_filename is None:
         return False
+
+    # The first line has the headers
+    header = get_first_line(manifest_filename)
+    if 'ETAG' in header:
+        return True
+
+    return False
+
 
 def deposit(args):
     """Deposit a set of files into AWS."""
@@ -76,7 +72,7 @@ def batch_deposit(args):
     batches_filename = args.batches_file
     with open(batches_filename, 'r') as batches_file:
         batch_configs = yaml.safe_load(batches_file)
-    batches_dir = batch_configs['batches_dir'] or os.path.curdir()
+    batches_dir = batch_configs['batches_dir'] or os.path.curdir
 
     stats_filename = os.path.join(os.path.dirname(batches_filename), 'stats.csv')
     stats_file_is_new = not os.path.exists(stats_filename)
