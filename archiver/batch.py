@@ -214,10 +214,10 @@ class Batch:
                 
                 # Check if ETAG exists
                 if asset.etag is not None:
-                    sys.stdout.write('Using etag from csv\n')
+                    etag_message = '\n\n  Using etag from csv\n'
                     expected_etag = asset.etag
                 else:
-                    sys.stdout.write('Calculating etag\n')
+                    etag_message = '\n\n  Calculating etag\n'
                     expected_etag = asset.calculate_etag(chunk_size=chunk_bytes)
 
                 # Prepare custom metadata to attach to the asset
@@ -240,6 +240,8 @@ class Batch:
                     f'     MD5: {asset.md5}\n'
                     f'    ETAG: {expected_etag}\n\n'
                 )
+
+                sys.stdout.write(etag_message)
 
                 # Send the file, optionally in multipart, multithreaded mode
                 progress_tracker = ProgressPercentage(asset, self)
