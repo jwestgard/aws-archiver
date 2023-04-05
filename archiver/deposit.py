@@ -72,7 +72,7 @@ def batch_deposit(args):
     batches_filename = args.batches_file
     with open(batches_filename, 'r') as batches_file:
         batch_configs = yaml.safe_load(batches_file)
-    batches_dir = batch_configs['batches_dir'] or os.path.curdir()
+    batches_dir = batch_configs['batches_dir'] or os.path.curdir
 
     stats_filename = os.path.join(os.path.dirname(batches_filename), 'stats.csv')
     stats_file_is_new = not os.path.exists(stats_filename)
