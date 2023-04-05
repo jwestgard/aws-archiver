@@ -213,11 +213,9 @@ class Batch:
                 key_path = f'{self.name}/{asset.relpath}'
                 
                 # Check if ETAG exists
-                if asset.etag is not None:
-                    etag_message = '\n\n  Using etag from csv\n'
+                if asset.etag is not None and asset.etag != '':
                     expected_etag = asset.etag
                 else:
-                    etag_message = '\n\n  Calculating etag\n'
                     expected_etag = asset.calculate_etag(chunk_size=chunk_bytes)
 
                 # Prepare custom metadata to attach to the asset
@@ -241,7 +239,6 @@ class Batch:
                     f'    ETAG: {expected_etag}\n\n'
                 )
 
-                sys.stdout.write(etag_message)
 
                 # Send the file, optionally in multipart, multithreaded mode
                 progress_tracker = ProgressPercentage(asset, self)
