@@ -97,13 +97,7 @@ class Batch:
         Set up a batch of assets to be loaded. Any assets whose local paths don't exist are omitted from the batch.
         """
         self.manifest = manifest
-        self.name = manifest.batch_name
-        if self.name is None:
-            if name is not None:
-                self.name = name
-            else:
-                self.name = manifest.manifest_path
-
+        self.overridden_name = name
         self.bucket = bucket
 
         if asset_root is None:
@@ -122,7 +116,7 @@ class Batch:
         self.contents = []
 
         self.stats = {
-            'batch_name': self.name,
+            'batch_name': self.overridden_name,
             'total_assets': 0,
             'assets_found': 0,
             'assets_missing': 0,
@@ -136,13 +130,13 @@ class Batch:
             'deposit_time': 0
         }
 
-    def add_asset(self, path, md5=None, relpath=None, manifest_row=None, etag=None):
+    def add_asset(self, path, batch_name=None, md5=None, relpath=None, manifest_row=None, etag=None):
         try:
             self.stats['total_assets'] += 1
             if (self.asset_root is not None) and (relpath is None):
                 relpath = calculate_relative_path(self.asset_root, path)
 
-            asset = Asset(path, md5, relpath=relpath, manifest_row=manifest_row, etag=etag)
+            asset = Asset(path, batch_name=batch_name, md5=md5, relpath=relpath, manifest_row=manifest_row, etag=etag)
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
@@ -210,7 +204,15 @@ class Batch:
         with open(os.path.join(self.log_dir, 'assets.json'), 'w') as json_log:
             for n, asset in enumerate(self.contents, 1):
                 header = f'({n}) {asset.filename.upper()}'
-                key_path = f'{self.name}/{asset.relpath}'
+                if self.overridden_name is not None:
+                    print(f'using overridden name {self.overridden_name}')
+                    key_path = f'{self.overridden_name}/{asset.relpath}'
+                elif asset.batch_name is not None and asset.batch_name != '':
+                    print(f'Using batch name from the row {asset.batch_name}')
+                    key_path = f'{asset.batch_name}/{asset.relpath}'
+                else:
+                    print(f'Using the manifestpath {self.manifest.manifest_path}')
+                    key_path = f'{self.manifest.manifest_path}/{asset.relpath}'
                 
                 # Check if ETAG exists
                 if asset.etag is not None and asset.etag != '':
