@@ -12,12 +12,6 @@ class Md5SumManifest(Manifest):
         self.manifest_filename = manifest_filename
         self.manifest_path = os.path.dirname(manifest_filename)
 
-    def batch_name(self):
-        """
-        Returns None, as MD5 Sum manifest does not specify the batch name
-        """
-        return None
-
     def load_manifest(self, results_filename, batch):
         if os.path.isfile(results_filename):
             with open(results_filename, 'r') as results_file:
@@ -35,4 +29,4 @@ class Md5SumManifest(Manifest):
                     md5, path = line.strip().split(None, 1)
                     manifest_row = {'MD5': md5, 'PATH': path}
                     if (md5, path) not in completed:
-                        batch.add_asset(path, md5, manifest_row=manifest_row)
+                        batch.add_asset(path, md5=md5, manifest_row=manifest_row)

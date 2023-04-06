@@ -11,12 +11,6 @@ class PatsyDbManifest(Manifest):
         self.manifest_filename = manifest_filename
         self.manifest_path = os.path.dirname(manifest_filename)
 
-    def batch_name(self):
-        """
-        Returns None, as Pasty DB manifest does not specify the batch
-        """
-        return None
-
     def load_manifest(self, results_filename, batch):
         if os.path.isfile(results_filename):
             with open(results_filename, 'r') as results_file:
@@ -32,4 +26,4 @@ class PatsyDbManifest(Manifest):
                 path = row['filepath']
                 relpath = row['relpath']
                 if (md5, path) not in completed:
-                    batch.add_asset(path, md5, relpath=relpath, manifest_row=row)
+                    batch.add_asset(path, md5=md5, relpath=relpath, manifest_row=row)
