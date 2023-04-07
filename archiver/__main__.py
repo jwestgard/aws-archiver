@@ -76,7 +76,7 @@ def main():
         '-n', '--name',
         action='store',
         help='Batch identifier or name',
-        default='test_batch'
+        default=None
     )
     deposit_parser.add_argument(
         '-p', '--profile',

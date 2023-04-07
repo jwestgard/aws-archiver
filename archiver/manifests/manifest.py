@@ -5,13 +5,6 @@ class Manifest(metaclass=abc.ABCMeta):
     """
     An interface for manifests.
     """
-    @abc.abstractmethod
-    def batch_name(self):
-        """
-        Returns the batch name associated with the manifest, or None if the
-        batch name is not specified by the manifest
-        """
-        return None
 
     @abc.abstractmethod
     def load_manifest(self, results_filename, batch):

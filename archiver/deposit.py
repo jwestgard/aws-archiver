@@ -102,7 +102,6 @@ def batch_deposit(args):
                 raise FailureException from e
 
             print()
-            print(f'Batch: {batch.name}')
             batch.deposit(
                 profile_name=args.profile,
                 chunk_size=config.get('chunk_size'),
