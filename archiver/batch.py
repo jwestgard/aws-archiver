@@ -241,7 +241,6 @@ class Batch:
                     f'    ETAG: {expected_etag}\n\n'
                 )
 
-
                 # Send the file, optionally in multipart, multithreaded mode
                 progress_tracker = ProgressPercentage(asset, self)
                 self.stats['assets_transmitted'] += 1
