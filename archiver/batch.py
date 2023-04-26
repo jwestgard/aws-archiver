@@ -183,14 +183,14 @@ class Batch:
         if self.manifest.manifest_filename:
             results_file_exists = os.path.exists(self.results_filename)
             results_file = open(self.results_filename, 'a')
-            fieldnames = ['id']
+            fieldnames = ['ID']
             # Include fields from the manifest in the results file
             if (len(self.contents) > 0):
                 first_asset = self.contents[0]
                 manifest_row = first_asset.manifest_row
                 if manifest_row:
                     fieldnames.extend(manifest_row.keys())
-            fieldnames.extend(['keypath', 'etag', 'result', 'storageprovider', 'storagepath'])
+            fieldnames.extend(['KEYPATH', 'ETAG', 'RESULT', 'STORAGEPROVIDER', 'STORAGELOCATION'])
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
             if not results_file_exists:
                 writer.writeheader()
@@ -213,7 +213,7 @@ class Batch:
                 else:
                     print(f'Using the manifestpath {self.manifest.manifest_path}')
                     key_path = f'{self.manifest.manifest_path}/{asset.relpath}'
-                
+
                 # Check if ETAG exists
                 if asset.etag is not None and asset.etag != '':
                     expected_etag = asset.etag
@@ -297,12 +297,12 @@ class Batch:
                     result = 'failed'
 
                 row = {
-                    'id': n,
-                    'keypath': key_path,
-                    'etag': remote_etag,
-                    'result': result,
-                    'storageprovider': 'AWS',
-                    'storagepath': f'{self.bucket}/{key_path}'
+                    'ID': n,
+                    'KEYPATH': key_path,
+                    'ETAG': remote_etag,
+                    'RESULT': result,
+                    'STORAGEPROVIDER': 'AWS',
+                    'STORAGELOCATION': f'{self.bucket}/{key_path}'
                 }
                 if asset.manifest_row:
                     row.update(asset.manifest_row)
