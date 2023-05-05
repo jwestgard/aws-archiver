@@ -36,7 +36,6 @@ def main():
         title='subcommands',
         description='valid subcommands',
         help='-h additional help',
-        metavar='{dep}',
         dest='cmd'
     )
     parser.add_argument(
@@ -124,10 +123,14 @@ def main():
 
     deposit_parser.set_defaults(func=deposit)
 
-    batch_deposit_parser = subparsers.add_parser('batch-deposit')
+    batch_deposit_parser = subparsers.add_parser(
+        'batch-deposit',
+         help='Deposits multiple batches listed in a manifest file.',
+    )
     batch_deposit_parser.add_argument(
         '-f', '--batches-file',
         action='store',
+        help='YAML file containing the paths to the manifests of individual batches.',
         required=True
     )
     batch_deposit_parser.add_argument(
