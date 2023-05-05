@@ -12,7 +12,7 @@ deposit records.
 
 To install the tool for system-wide access, the recommended method is via pip:
 
-```
+```bash
 $ git clone https://www.github.com/umd-lib/aws-archiver
 $ cd aws-archiver && pip install -e .
 ```
@@ -48,7 +48,7 @@ repository's ```bin``` directory.
 
 To create a batch manifest with the included script, do:
 
-```
+```bash
 $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 ```
 
@@ -56,7 +56,7 @@ $ ./bin/make_mapfile.sh path/to/asset/dir mapfile.txt
 
 A CSV file listing one asset per line, in the form
 
-```
+```csv
 <md5 hash>,<absolute local path>,<relative path>
 ```
 
@@ -85,7 +85,7 @@ permission for the bucket specified in the ```-b BUCKET``` option.
 
 ### Summary of options
 
-```
+```text
 S3 preservation archiver
 
 optional arguments:
@@ -119,7 +119,7 @@ optional arguments:
 
 ### Batch deposit summary
 
-```
+```text
 usage: archiver batch-deposit [-h] -f BATCHES_FILE [-p PROFILE]
 
 optional arguments:
@@ -164,3 +164,8 @@ You can restore files from AWS Deep Glacier using the scripts [bin/requestfilesf
 ## Development Setup
 
 See [docs/DevelopmentSetup.md](docs/DevelopmentSetup.md).
+
+## Conformance Tests
+
+Manual tests to verify application conformanance to actual AWS behavior are
+specified in [docs/ConformanceTests.md](docs/ConformanceTests.md).
