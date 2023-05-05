@@ -155,7 +155,29 @@ options:
                         AWS authorization profile
 ```
 
-Enables depositing multiple batches specified in a YAML manifest.
+Enables depositing multiple batches specified in a YAML manifest. The format of
+the YAML file is:
+
+```yaml
+batches_dir: <Fully-qualified filepath to the directory batches>
+batches:
+    - path: <Relative subdirectory to the manifest file for the batch>
+      bucket: <The AWS bucket to store the assets in>
+      asset_root: <The asset root for the batch>
+```
+
+For example:
+
+```yaml
+batches_dir: /libr/archives/logs/libdc/load1
+batches:
+    - path: Archive000Football1
+      bucket: libdc-archivebucket-17lowbw7m2av1
+      asset_root: /libr/archives/footballfilmsexport/FootballFilmMpeg2_07272011/2010-07-12/Mpeg2QCd
+    - path: Archive000Football2
+      bucket: libdc-archivebucket-17lowbw7m2av1
+      asset_root: /libr/archives/footballfilmsexport/FootballFilmMpeg2_07272011/2010-08-20/Maryland_mpg2_master/Maryland_mpg2_Batch1
+```
 
 ## Restoring from AWS Deep Glacier
 
