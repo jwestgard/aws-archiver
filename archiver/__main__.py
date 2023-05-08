@@ -125,7 +125,7 @@ def main():
 
     batch_deposit_parser = subparsers.add_parser(
         'batch-deposit',
-         help='Deposits multiple batches listed in a manifest file.',
+        help='Deposits multiple batches listed in a manifest file.',
     )
     batch_deposit_parser.add_argument(
         '-f', '--batches-file',
