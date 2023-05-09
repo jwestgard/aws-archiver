@@ -36,7 +36,6 @@ def main():
         title='subcommands',
         description='valid subcommands',
         help='-h additional help',
-        metavar='{dep}',
         dest='cmd'
     )
     parser.add_argument(
@@ -76,7 +75,7 @@ def main():
         '-n', '--name',
         action='store',
         help='Batch identifier or name',
-        default='test_batch'
+        default=None
     )
     deposit_parser.add_argument(
         '-p', '--profile',
@@ -116,13 +115,22 @@ def main():
         action='store',
         help='Archive a single asset'
     )
+    deposit_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Perform a "dry run" without actually contacting AWS.',
+    )
 
     deposit_parser.set_defaults(func=deposit)
 
-    batch_deposit_parser = subparsers.add_parser('batch-deposit')
+    batch_deposit_parser = subparsers.add_parser(
+        'batch-deposit',
+        help='Deposits multiple batches listed in a manifest file.',
+    )
     batch_deposit_parser.add_argument(
         '-f', '--batches-file',
         action='store',
+        help='YAML file containing the paths to the manifests of individual batches.',
         required=True
     )
     batch_deposit_parser.add_argument(

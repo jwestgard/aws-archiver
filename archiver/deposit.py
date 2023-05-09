@@ -6,22 +6,44 @@ import yaml
 
 from .batch import Batch, DEFAULT_MANIFEST_FILENAME
 from .exceptions import ConfigException, FailureException
+from .manifests.manifest_factory import ManifestFactory
+from .utils import get_first_line
+
+
+def check_etag(manifest_filename: str) -> bool:
+    """
+    Determines if etags should be calculated during deposit
+    """
+    if manifest_filename is None:
+        return False
+
+    # The first line has the headers
+    header = get_first_line(manifest_filename)
+    if 'ETAG' in header:
+        return True
+
+    return False
 
 
 def deposit(args):
     """Deposit a set of files into AWS."""
     try:
+        load_single_asset = args.mapfile is None
+        manifest = ManifestFactory.create(args.mapfile)
+        etag_exists = check_etag(args.mapfile)
+
         batch = Batch(
-            manifest_path=os.path.dirname(args.mapfile) if args.mapfile else os.path.curdir,
+            manifest,
             name=args.name,
             bucket=args.bucket,
             asset_root=args.root,
             log_dir=args.logs
         )
-        if args.mapfile is not None:
-            batch.load_manifest(args.mapfile)
-        else:
+
+        if load_single_asset:
             batch.add_asset(args.asset)
+        else:
+            manifest.load_manifest(batch.results_filename, batch, etag_exists=etag_exists)
 
     except ConfigException as e:
         print(e, file=sys.stderr)
@@ -32,7 +54,8 @@ def deposit(args):
         profile_name=args.profile,
         chunk_size=args.chunk,
         storage_class=args.storage,
-        max_threads=args.threads
+        max_threads=args.threads,
+        dry_run=args.dry_run
     )
 
 
@@ -49,7 +72,7 @@ def batch_deposit(args):
     batches_filename = args.batches_file
     with open(batches_filename, 'r') as batches_file:
         batch_configs = yaml.safe_load(batches_file)
-    batches_dir = batch_configs['batches_dir'] or os.path.curdir()
+    batches_dir = batch_configs['batches_dir'] or os.path.curdir
 
     stats_filename = os.path.join(os.path.dirname(batches_filename), 'stats.csv')
     stats_file_is_new = not os.path.exists(stats_filename)
@@ -60,25 +83,31 @@ def batch_deposit(args):
 
         for config in batch_configs['batches']:
             try:
+                manifest_filename = os.path.join(batches_dir, config.get('path'),
+                                                 config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest = ManifestFactory.create(manifest_filename)
+                etag_exists = check_etag(args.mapfile)
+
                 batch = Batch(
-                    manifest_path=os.path.join(batches_dir, config.get('path')),
+                    manifest,
                     bucket=config.get('bucket'),
                     asset_root=config.get('asset_root'),
                     name=config.get('name'),
                     log_dir=config.get('logs')
                 )
-                batch.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME))
+                manifest.load_manifest(config.get('manifest', DEFAULT_MANIFEST_FILENAME), batch,
+                                       etag_exists=etag_exists)
             except ConfigException as e:
                 print(e, file=sys.stderr)
                 raise FailureException from e
 
             print()
-            print(f'Batch: {batch.name}')
             batch.deposit(
                 profile_name=args.profile,
                 chunk_size=config.get('chunk_size'),
                 storage_class=config.get('storage_class'),
-                max_threads=config.get('max_threads')
+                max_threads=config.get('max_threads'),
+                dry_run=args.dry_run
             )
             writer.writerow(batch.stats)
             for key, value in batch.stats.items():

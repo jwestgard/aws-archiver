@@ -72,9 +72,6 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# pyenv
-.python-version
-
 # celery beat schedule file
 celerybeat-schedule
 
@@ -107,7 +104,7 @@ venv.bak/
 .DS_Store
 thumbs.db
 logs/
-
-# IDE-specific ignores
+dump/
+.vscode
 .idea
-
+:memory
