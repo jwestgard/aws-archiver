@@ -1,10 +1,8 @@
 from setuptools import find_packages, setup
 
-import archiver
-
 setup(
     name='archiver',
-    version=archiver.version,
+    version='2.0.0',
     description='Command-line preservation archiving tool for S3',
     author='Joshua A. Westgard',
     author_email="westgard@umd.edu",
