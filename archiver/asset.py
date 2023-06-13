@@ -4,6 +4,7 @@ from .exceptions import ConfigException
 from .utils import calculate_relative_path
 
 GB = 1024 ** 3
+OUTPUT_ONLY_COLS = ['RESULT', 'STORAGELOCATION', 'STORAGEPROVIDER']
 
 
 class Asset:
@@ -11,7 +12,9 @@ class Asset:
     Class representing a binary resource to be archived.
     """
 
-    def __init__(self, path, batch_name=None, md5=None, relpath=None, manifest_row=None, etag=None):
+    def __init__(self, path, batch_name=None, md5=None,
+                 relpath=None, manifest_row=None, etag=None
+                 ):
         self.local_path = path
         self.batch_name = batch_name
         self.md5 = md5 or self.calculate_md5()
@@ -21,7 +24,9 @@ class Asset:
         self.bytes = os.path.getsize(self.local_path)
         self.extension = os.path.splitext(self.filename)[1].lstrip('.').upper()
         self.relpath = relpath
-        self.manifest_row = manifest_row
+        self.manifest_row = {
+            k: v for (k, v) in manifest_row.items() if k not in OUTPUT_ONLY_COLS
+            }
         self.etag = etag
 
     def calculate_md5(self):
@@ -62,9 +67,9 @@ class Asset:
                 for data in chunked(handle, chunk_size):
                     md5s.append(hashlib.md5(data))
             else:
-                # Python doesn't like reading more than 1GB of bytes from a file at a time.
-                # To get around this, we read 1GB at a time and assemble those portions into
-                # the final md5sum.
+                # Python doesn't like reading more than 1GB of bytes from a file at a
+                # time. To get around this, we read 1GB at a time and assemble those
+                # portions into the final md5sum.
                 if chunk_size % GB != 0:
                     raise ConfigException('Chunk sizes >1GB must be multiples of 1GB')
                 portions_per_chunk = chunk_size // GB
