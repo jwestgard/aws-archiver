@@ -130,13 +130,26 @@ class Batch:
             'deposit_time': 0
         }
 
-    def add_asset(self, path, batch_name=None, md5=None, relpath=None, manifest_row=None, etag=None):
+    def add_asset(self, path, batch_name=None, md5=None, relpath=None,
+                    manifest_row=None, etag=None
+                    ):
         try:
             self.stats['total_assets'] += 1
+
+            # if the root flag is set, and relpath is not, calculate relpath relative
+            # to this root directory using the rootdir and absolute path values
             if (self.asset_root is not None) and (relpath is None):
                 relpath = calculate_relative_path(self.asset_root, path)
 
-            asset = Asset(path, batch_name=batch_name, md5=md5, relpath=relpath, manifest_row=manifest_row, etag=etag)
+            # if the root flag is set and relpath is set, calculate local path to use
+            # for cases where files have been staged for transfer in a different 
+            # location from the original inventory location
+            if (self.asset_root is not None) and (relpath is not None):
+                path = os.path.join(self.asset_root, relpath)
+
+            asset = Asset(path, batch_name=batch_name, md5=md5, relpath=relpath,
+                            manifest_row=manifest_row, etag=etag
+                            )
             self.contents.append(asset)
             self.stats['assets_found'] += 1
         except FileNotFoundError as e:
@@ -190,7 +203,12 @@ class Batch:
                 manifest_row = first_asset.manifest_row
                 if manifest_row:
                     fieldnames.extend(manifest_row.keys())
-            fieldnames.extend(['KEYPATH', 'ETAG', 'RESULT', 'STORAGEPROVIDER', 'STORAGELOCATION'])
+
+            # Ensure optional fields are present in output
+            optional_fields = [
+                'KEYPATH', 'ETAG', 'RESULT', 'STORAGEPROVIDER', 'STORAGELOCATION'
+                ]
+            fieldnames.extend([f for f in optional_fields if f not in fieldnames])
             writer = csv.DictWriter(results_file, fieldnames=fieldnames)
             if not results_file_exists:
                 writer.writeheader()
@@ -265,14 +283,16 @@ class Batch:
                     response = s3_client.head_object(Bucket=self.bucket, Key=key_path)
                 except ClientError as e:
                     self.stats['failed_deposits'] += 1
-                    print(f'Error verifying {self.bucket}/{key_path}: {e}', file=sys.stderr)
+                    print(f'Error verifying {self.bucket}/{key_path}: {e}',
+                            file=sys.stderr)
                     print('Continuing with the next asset', file=sys.stderr)
                     return
 
                 # Write response metadata to a line-oriented JSON file
                 # See also: http://jsonlines.org/
                 json.dump(
-                    {'asset': f'{self.bucket}/{key_path}', 'response': response['ResponseMetadata']},
+                    {'asset': f'{self.bucket}/{key_path}',
+                    'response': response['ResponseMetadata']},
                     json_log
                 )
                 json_log.write('\n')
